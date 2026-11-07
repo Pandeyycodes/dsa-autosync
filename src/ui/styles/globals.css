@@ -1,0 +1,47 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body {
+    @apply bg-canvas text-fg font-sans text-base antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    -webkit-font-smoothing: antialiased;
+  }
+  body.popup {
+    width: 372px;
+    min-height: 520px;
+  }
+  ::selection {
+    background: rgba(61, 214, 140, 0.25);
+  }
+  :focus-visible {
+    outline: none;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a31 transparent;
+  }
+}
+
+@layer components {
+  .focus-ring {
+    @apply focus-visible:shadow-focus;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  .eyebrow {
+    @apply text-2xs font-medium uppercase tracking-[0.08em] text-fg-subtle;
+  }
+  .hairline {
+    @apply h-px w-full bg-line;
+  }
+}
