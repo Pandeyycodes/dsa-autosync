@@ -44,4 +44,6 @@ export const DUPLICATE_STRATEGIES: { id: DuplicateStrategy; label: string; descr
 export const RETRY = { maxAttempts: 6, baseDelayMs: 30_000, maxDelayMs: 30 * 60_000 };
 /** Verifying jobs older than this are closed as UNKNOWN (never uploaded). */
 export const VERIFY_TIMEOUT_MS = 24 * 3600_000;
+/** GfG verdicts can only be observed in the submitting tab (no lookup by id), so give up sooner. */
+export const GFG_VERIFY_TIMEOUT_MS = 15 * 60_000;
 export const MAX_JOBS = 500;

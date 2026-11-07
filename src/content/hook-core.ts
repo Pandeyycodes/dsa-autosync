@@ -17,19 +17,32 @@ export function installNetworkObserver(match: (url: string, method: string) => b
 
   const origFetch = window.fetch;
   window.fetch = async function (this: unknown, input: RequestInfo | URL, init?: RequestInit) {
-    const res = await origFetch.call(this, input, init);
+    let url = '';
+    let method = 'GET';
+    let bodyPromise: Promise<unknown> | null = null;
     try {
-      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href).href;
-      const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href).href;
+      method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
       if (match(url, method)) {
-        const body = init?.body ?? null;
-        res.clone().json().then(
-          (json: unknown) => onObserved({ url, method, requestBody: body, responseBody: json, status: res.status }),
-          () => undefined,
-        );
+        // Libraries such as Redux Toolkit (used by GeeksforGeeks) call fetch(new Request(url, { body }))
+        // with no init — the body lives inside the Request. Clone it *before* fetch consumes it.
+        bodyPromise =
+          init?.body !== undefined && init?.body !== null
+            ? Promise.resolve(init.body)
+            : input instanceof Request
+              ? input.clone().text().catch(() => null)
+              : Promise.resolve(null);
       }
     } catch {
-      /* observation must never break the page */
+      bodyPromise = null; // observation must never break the page
+    }
+    const res = await origFetch.call(this, input, init);
+    if (bodyPromise) {
+      const status = res.status;
+      Promise.all([bodyPromise, res.clone().json()]).then(
+        ([requestBody, json]) => onObserved({ url, method, requestBody, responseBody: json, status }),
+        () => undefined,
+      );
     }
     return res;
   };

@@ -3,7 +3,7 @@
  * worker restart loses nothing: `recover()` resumes interrupted uploads and
  * content scripts resume pending verifications.
  */
-import { KEYS, MAX_JOBS, RETRY, VERIFY_TIMEOUT_MS } from '@/shared/constants';
+import { GFG_VERIFY_TIMEOUT_MS, KEYS, MAX_JOBS, RETRY, VERIFY_TIMEOUT_MS } from '@/shared/constants';
 import { CaptureSchema, type RepoConfig, type SubmissionCapture, type SyncRequest } from '@/shared/schemas';
 import { loadSettings, type KV } from '@/shared/storage';
 import type { Account, Job, PlatformId } from '@/shared/types';
@@ -181,7 +181,8 @@ export class JobService {
           j.status = 'queued'; // backend dedupe makes the resend safe
           j.nextAttemptAt = t;
         }
-        if (j.status === 'verifying' && t - j.detectedAt > VERIFY_TIMEOUT_MS) {
+        const timeout = j.platform === 'gfg' ? GFG_VERIFY_TIMEOUT_MS : VERIFY_TIMEOUT_MS;
+        if (j.status === 'verifying' && t - j.detectedAt > timeout) {
           j.status = 'ignored';
           j.verdict = 'UNKNOWN';
           j.error = { code: 'VERIFY_TIMEOUT', message: 'No final verdict could be confirmed. Not uploaded.' };

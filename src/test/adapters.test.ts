@@ -210,3 +210,29 @@ describe('problem HTML extraction', () => {
     expect(c.statementMarkdown).toBe('Only a statement with **bold** & special chars: a|b `c` 数组');
   });
 });
+
+describe('GeeksforGeeks network observation (real client shape)', () => {
+  it('reads sub_id from a Request object body (Redux Toolkit style fetch(new Request(...)))', async () => {
+    const observed: { requestBody: unknown; responseBody: unknown }[] = [];
+    window.fetch = (async () => Response.json({ status: 'SUCCESS', view_mode: 'correct' })) as unknown as typeof fetch;
+    (window as { __codesyncHooked?: boolean }).__codesyncHooked = false;
+    installNetworkObserver((url, m) => m === 'POST' && gfg.RESULT_RE.test(url), (o) => observed.push(o));
+    const req = new Request('https://practiceapiorigin.geeksforgeeks.org/api/latest/problems/submission/submit/result/', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sub_id: 'abc123', sub_type: 'solutionCheck', pid: 700005 }),
+    });
+    const res = await window.fetch(req);
+    expect(await res.json()).toEqual({ status: 'SUCCESS', view_mode: 'correct' }); // page unaffected
+    await new Promise((r) => setTimeout(r, 0));
+    expect(observed).toHaveLength(1);
+    expect(readField(observed[0]!.requestBody, 'sub_id')).toBe('abc123');
+    expect(gfg.verdictFromResult(observed[0]!.responseBody)).toBe('ACCEPTED');
+  });
+
+  it('matches the real GfG API host (practiceapiorigin + /api/latest/)', () => {
+    const m = gfg.SUBMIT_RE.exec('https://practiceapiorigin.geeksforgeeks.org/api/latest/problems/reverse-a-linked-list/submit/compile/?batch_slug=x');
+    expect(m?.[1]).toBe('https://practiceapiorigin.geeksforgeeks.org/api/latest/');
+    expect(m?.[2]).toBe('reverse-a-linked-list');
+  });
+});
