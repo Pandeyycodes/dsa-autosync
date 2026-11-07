@@ -149,7 +149,7 @@ backend/        small API that talks to GitHub
 
 ## Known limitations
 
-- **GeeksforGeeks** has no public API. The adapter follows how GfG's own website works, so if GfG changes it, syncing pauses safely: it uploads nothing rather than the wrong thing.
+- **GeeksforGeeks** has no public API. The adapter follows how GfG's own website works (tested on a live account), so if GfG changes it, syncing pauses safely: it uploads nothing rather than the wrong thing. Keep the GfG tab open until the verdict appears.
 - **LeetCode premium** problems you don't have access to are synced without the statement.
 - Built for **personal use**: no database, so history lives in your browser.
 
