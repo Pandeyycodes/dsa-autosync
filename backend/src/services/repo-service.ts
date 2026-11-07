@@ -79,8 +79,13 @@ export class RepoService {
         try {
           await this.github.getBranch(token, repo.full_name, input.branch);
         } catch (e) {
-          if (e instanceof GitHubError && e.kind === 'not_found') throw new AppError(400, 'BRANCH_NOT_FOUND', `Branch "${input.branch}" does not exist.`);
-          throw e;
+          if (!(e instanceof GitHubError && e.kind === 'not_found')) throw e;
+          // A brand-new empty repository has no branches yet: allow its default branch —
+          // the first sync creates it.
+          const empty = (await this.github.listBranches(token, repo.full_name)).length === 0;
+          if (!(empty && input.branch === repo.default_branch)) {
+            throw new AppError(400, 'BRANCH_NOT_FOUND', `Branch "${input.branch}" does not exist.`);
+          }
         }
       }
       return { repositoryId: String(repo.id), fullName: repo.full_name, branch: input.branch, rootFolder, layout: input.layout };

@@ -220,3 +220,26 @@ describe('Settings controls', () => {
     expect(sent).toContainEqual({ type: 'ui/disconnect' });
   });
 });
+
+describe('Repository page with an empty repository', () => {
+  it('offers the default branch and enables Save', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/repository';
+    const { sent } = setup(<Dashboard />, { [KEYS.account]: account({ repo: null }) }, (m) => {
+      if (m.type === 'ui/repos') return { ok: true, data: { installUrl: 'https://x', repositories: [{ id: '10', fullName: 'octocat/dsa-solutions', private: true, defaultBranch: 'main', canPush: true }] } };
+      if (m.type === 'ui/branches') return { ok: true, data: { branches: [] } };
+      if (m.type === 'ui/save-repo') return { ok: true, data: { repositoryId: '10', fullName: 'octocat/dsa-solutions', branch: m.branch, rootFolder: m.rootFolder, layout: m.layout } };
+      return { ok: true, data: null };
+    });
+    expect(await screen.findByTestId('save-hint')).toHaveTextContent('Select a repository.');
+    const repoSelect = await screen.findByLabelText('Repository');
+    await waitFor(() => expect(within(repoSelect).getByRole('option', { name: 'octocat/dsa-solutions' })).toBeInTheDocument());
+    await user.selectOptions(repoSelect, '10');
+    await waitFor(() => expect(screen.getByLabelText('Branch')).toHaveValue('main'));
+    expect(screen.getByText(/This repository is empty/)).toBeInTheDocument();
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeEnabled();
+    await user.click(save);
+    expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '10', branch: 'main', rootFolder: 'DSA', layout: 'platform/topic/problem' });
+  });
+});

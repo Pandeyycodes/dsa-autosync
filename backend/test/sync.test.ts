@@ -95,6 +95,12 @@ describe('GitHub synchronization', () => {
     expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Database/0176-second-highest-salary/SQL/solution.sql')).toBe(true);
   });
 
+  it('accepts the default branch of an empty repository, but not other branches', async () => {
+    const c = await ready({ empty: true });
+    expect((await post(c, '/v1/repo-config/validate', REPO)).json()).toMatchObject({ fullName: 'octocat/dsa', branch: 'main' });
+    expect((await post(c, '/v1/repo-config/validate', { ...REPO, branch: 'dev' })).json().error.code).toBe('BRANCH_NOT_FOUND');
+  });
+
   it('creates the first commit in an empty repository', async () => {
     const c = await ready({ empty: true });
     const res = await post(c, '/v1/sync', syncRequest({}, { repo: { ...REPO, rootFolder: '', layout: 'platform/problem' } }));

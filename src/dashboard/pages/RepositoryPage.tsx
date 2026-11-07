@@ -31,6 +31,7 @@ export function RepositoryPage() {
   const [repoId, setRepoId] = useState(account?.repo?.repositoryId ?? '');
   const [branches, setBranches] = useState<string[]>([]);
   const [branch, setBranch] = useState(account?.repo?.branch ?? '');
+  const [emptyRepo, setEmptyRepo] = useState(false);
   const [folder, setFolder] = useState(account?.repo?.rootFolder ?? settings.repository.rootFolder);
   const [layout, setLayout] = useState<FolderLayout>(account?.repo?.layout ?? settings.repository.layout);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -53,9 +54,12 @@ export function RepositoryPage() {
     if (!repoId || !connected) return setBranches([]);
     void run<{ branches: string[] }>({ type: 'ui/branches', repositoryId: repoId }).then((d) => {
       if (!d) return;
-      setBranches(d.branches);
       const repo = repos?.find((r) => r.id === repoId);
-      setBranch((b) => (d.branches.includes(b) ? b : repo && d.branches.includes(repo.defaultBranch) ? repo.defaultBranch : d.branches[0] ?? ''));
+      // An empty repository has no branches yet: offer its default branch (created on first sync).
+      const list = d.branches.length ? d.branches : repo ? [repo.defaultBranch] : [];
+      setEmptyRepo(d.branches.length === 0);
+      setBranches(list);
+      setBranch((b) => (list.includes(b) ? b : repo && list.includes(repo.defaultBranch) ? repo.defaultBranch : list[0] ?? ''));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoId, connected, repos]);
@@ -67,6 +71,17 @@ export function RepositoryPage() {
 
   const dirty =
     !account?.repo || account.repo.repositoryId !== repoId || account.repo.branch !== branch || account.repo.rootFolder !== folder.trim().replace(/^\/+|\/+$/g, '') || account.repo.layout !== layout;
+  const saveBlocker = !connected
+    ? 'Connect GitHub first.'
+    : !repoId
+      ? 'Select a repository.'
+      : !branch
+        ? 'Waiting for branches to load…'
+        : fErr
+          ? 'Fix the root folder.'
+          : !dirty
+            ? 'Saved.'
+            : null;
   const preview = fErr ? null : buildSolutionPaths(folder, layout, { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'Two Sum', topics: ['Array'], language: 'python' });
 
   return (
@@ -111,11 +126,12 @@ export function RepositoryPage() {
               {preview?.solutionFile ?? '—'}
             </p>
             <div className="flex items-center gap-2">
+              {saveBlocker && <span className="text-xs text-fg-subtle" data-testid="save-hint">{saveBlocker}</span>}
               <Button size="sm" variant="ghost" icon={pending === 'ui/test-repo' ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />} disabled={!account?.repo || dirty || !!pending}
                 onClick={async () => setTestResult(await run<{ ok: boolean; message: string }>({ type: 'ui/test-repo' }))}>
                 Test write access
               </Button>
-              <Button size="sm" variant="primary" disabled={!connected || !repoId || !branch || !!fErr || !dirty || !!pending} onClick={save}>
+              <Button size="sm" variant="primary" disabled={!!saveBlocker || pending === 'ui/save-repo'} onClick={save}>
                 {pending === 'ui/save-repo' ? 'Saving…' : 'Save'}
               </Button>
             </div>
@@ -148,9 +164,12 @@ export function RepositoryPage() {
         <SettingRow title="Branch" description="Commits are pushed to this branch." htmlFor="branch">
           <select id="branch" className={selectCls} value={branch} disabled={!branches.length} onChange={(e) => setBranch(e.target.value)}>
             {!branches.length && <option value="">{repoId ? 'Loading…' : '—'}</option>}
-            {branches.map((b) => <option key={b} value={b}>{b}</option>)}
+            {branches.map((b) => <option key={b} value={b}>{b}{emptyRepo ? ' (new — created on first sync)' : ''}</option>)}
           </select>
         </SettingRow>
+        {emptyRepo && (
+          <p className="px-5 py-2.5 text-xs text-fg-subtle">This repository is empty. CodeSync will create the first commit on <span className="font-mono">{branch}</span>.</p>
+        )}
         <SettingRow title="Root folder" description="Leave empty to write at the repository root." htmlFor="root-folder">
           <div className="w-64">
             <TextInput id="root-folder" value={folder} placeholder="/" prefix={<Folder size={13} />} error={fErr} onChange={(e) => setFolder(e.target.value)} />
