@@ -22,7 +22,6 @@ backend/.env.*
 backend/.pgdata/
 
 # Editor / OS / tooling
-.claude/
 .vscode/
 .idea/
 .DS_Store
