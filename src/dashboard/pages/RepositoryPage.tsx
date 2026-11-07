@@ -51,7 +51,8 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
   const [branch, setBranch] = useState(saved?.branch ?? '');
   const [emptyRepo, setEmptyRepo] = useState(false);
   const [folder, setFolder] = useState(saved?.rootFolder ?? (sql ? '' : settings.repository.rootFolder));
-  const [layout, setLayout] = useState<FolderLayout>(saved?.layout ?? settings.repository.layout);
+  // An SQL-only repository holds one platform, so sections sit at its root by default (no LeetCode/ folder).
+  const [layout, setLayout] = useState<FolderLayout>(saved?.layout ?? (sql ? 'topic/problem' : settings.repository.layout));
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const fErr = folderError(folder);
 
@@ -136,12 +137,15 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
         title={sql ? 'SQL folder structure' : 'Folder structure'}
         description={
           sql
-            ? 'By topic = the SQL concept your solution uses (Joins, Aggregation, Window-Functions …). Or group by difficulty, or keep a flat list.'
+            ? 'Sections at root: SQL 50 sections (01-Select …) straight in the repository, no LeetCode/ folder. Other SQL problems go by the concept used (Joins, Aggregation …).'
             : 'By topic (Array, Tree …; SQL by concept used), by difficulty, or a flat list per platform.'
         }
       >
         <div role="radiogroup" aria-label={sql ? 'SQL folder structure' : 'Folder structure'} className="flex rounded-md border border-line bg-canvas p-0.5">
-          {([['platform/topic/problem', 'By topic'], ['platform/difficulty/problem', 'By difficulty'], ['platform/problem', 'Flat']] as const).map(([value, label]) => (
+          {(sql
+            ? ([['topic/problem', 'Sections at root'], ['platform/topic/problem', 'Inside LeetCode/'], ['platform/difficulty/problem', 'By difficulty']] as const)
+            : ([['platform/topic/problem', 'By topic'], ['platform/difficulty/problem', 'By difficulty'], ['platform/problem', 'Flat']] as const)
+          ).map(([value, label]) => (
             <button key={value} type="button" role="radio" aria-checked={layout === value} onClick={() => setLayout(value)}
               className={cn('focus-ring h-6 rounded-[5px] px-2.5 text-xs font-medium transition-colors', layout === value ? 'bg-surface-active text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
               {label}

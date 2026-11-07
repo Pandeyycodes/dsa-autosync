@@ -56,3 +56,33 @@ describe('LeetCode SQL 50 layout', () => {
     expect(gh.files('octocat/sql').has('LeetCode/01-Select/1757-recyclable-and-low-fat-products/solution.sql')).toBe(true);
   });
 });
+
+describe('SQL repository without a platform folder', () => {
+  it('puts SQL 50 sections at the repository root', () => {
+    const p = buildSolutionPaths('', 'topic/problem', { platform: 'leetcode', problemId: '1757', slug: 'recyclable-and-low-fat-products', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Easy', code: 'SELECT 1' });
+    expect(p.solutionFile).toBe('01-Select/1757-recyclable-and-low-fat-products/solution.sql');
+    expect(p.readme).toBe('01-Select/1757-recyclable-and-low-fat-products/README.md');
+  });
+
+  it('syncs into root-level sections and keeps non-SQL-50 problems in their first folder', async () => {
+    const { app, gh } = await setup();
+    const { code } = gh.addUser('octocat', 1);
+    gh.addRepo('octocat/sql50', 10, { installedFor: ['octocat'] });
+    const auth = { authorization: `Bearer ${await connect(app, code)}` };
+    const repo = { repositoryId: '10', branch: 'main', rootFolder: '', layout: 'topic/problem' as const };
+    const sql = (id: string, slug: string, num: string, codeText: string) =>
+      app.inject({ method: 'POST', url: '/v1/sync', headers: auth, payload: syncRequest({ submissionId: id, language: 'sql', languageVariant: 'MySQL', code: codeText, problem: { id: num, title: slug, slug, url: `https://leetcode.com/problems/${slug}/`, difficulty: 'Easy', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] } }, { repo }) });
+
+    await sql('1', 'rising-temperature', '197', 'SELECT w1.id FROM Weather w1 JOIN Weather w2 ON 1=1;\n');
+    await sql('2', 'nth-highest-salary', '177', 'SELECT MAX(salary) FROM Employee;\n');
+    await sql('3', 'nth-highest-salary', '177', 'SELECT salary FROM (SELECT salary, RANK() OVER (ORDER BY salary) r FROM Employee) t;\n');
+    const files = [...gh.files('octocat/sql50').keys()].sort();
+    expect(files).toEqual([
+      '02-Basic-Joins/0197-rising-temperature/README.md',
+      '02-Basic-Joins/0197-rising-temperature/solution.sql',
+      'Aggregation/0177-nth-highest-salary/README.md',
+      'Aggregation/0177-nth-highest-salary/solution.sql',
+    ]);
+    expect(files.some((f) => f.startsWith('LeetCode/'))).toBe(false);
+  });
+});

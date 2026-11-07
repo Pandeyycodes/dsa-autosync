@@ -72,7 +72,9 @@ export class SyncService {
     const fixedSection = capture.platform === 'leetcode' && capture.language === 'sql' && !!sql50Entry(capture.problem.slug);
     const problemDir = fixedSection
       ? paths.problemDir
-      : ((await this.findExistingProblemDir(token, repo, cfg.branch, paths.problemDir)) ?? paths.problemDir);
+      : cfg.layout === 'platform/problem'
+        ? paths.problemDir // flat layout: no grouping folder to keep stable
+        : ((await this.findExistingProblemDir(token, repo, cfg.branch, paths.problemDir)) ?? paths.problemDir);
     const inDir = (fileName?: string) => pathsInDir(problemDir, capture.language, fileName);
     paths = inDir();
 
@@ -128,17 +130,18 @@ export class SyncService {
    * folder (e.g. DSA/LeetCode/<any group>/0176-second-highest-salary), reuse it.
    */
   private async findExistingProblemDir(token: string, repo: string, branch: string, planned: string): Promise<string | null> {
+    // planned = <base>/<group>/<problem>; look for <base>/<any group>/<problem>.
     const parts = planned.split('/');
     const problem = parts.pop()!;
-    const platformIdx = parts.findIndex((p) => p === 'LeetCode' || p === 'GeeksForGeeks');
-    if (platformIdx < 0) return null;
-    const platformDir = parts.slice(0, platformIdx + 1).join('/');
+    parts.pop(); // the planned group folder
+    const base = parts.join('/');
+    const prefix = base ? `${base}/` : '';
     const tree = await this.github.getTree(token, repo, branch);
     if (!tree) return null;
     const match = tree.find((e) => {
-      if (e.type !== 'tree' || !e.path.startsWith(platformDir + '/')) return false;
-      const rest = e.path.slice(platformDir.length + 1).split('/');
-      return rest[rest.length - 1] === problem && rest.length <= 2;
+      if (e.type !== 'tree' || !e.path.startsWith(prefix)) return false;
+      const rest = e.path.slice(prefix.length).split('/');
+      return rest.length === 2 && rest[1] === problem;
     });
     return match?.path ?? null;
   }

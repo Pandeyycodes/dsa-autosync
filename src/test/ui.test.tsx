@@ -259,9 +259,9 @@ describe('SQL repository settings', () => {
     await waitFor(() => expect(within(select).getByRole('option', { name: 'octocat/sql-solutions' })).toBeInTheDocument());
     await user.selectOptions(select, '20');
     await waitFor(() => expect(screen.getByLabelText('SQL branch')).toHaveValue('main'));
-    expect(screen.getByText('LeetCode/07-Advanced-String-Functions-Regex-Clause/0176-second-highest-salary/solution.sql')).toBeInTheDocument();
+    expect(screen.getByText('07-Advanced-String-Functions-Regex-Clause/0176-second-highest-salary/solution.sql')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save SQL repository' }));
-    expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '20', branch: 'main', rootFolder: '', layout: 'platform/topic/problem', target: 'sql' });
+    expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '20', branch: 'main', rootFolder: '', layout: 'topic/problem', target: 'sql' });
 
     await kv.set(KEYS.account, account({ sqlRepo: { repositoryId: '20', fullName: 'octocat/sql-solutions', branch: 'main', rootFolder: '', layout: 'platform/topic/problem' } }));
     await user.click(screen.getByRole('switch', { name: 'Separate repository for SQL' }));

@@ -40,19 +40,20 @@ DSA/
 **SQL can go to its own repository** (optional). Problems from LeetCode's **[SQL 50](https://leetcode.com/studyplan/top-sql-50/)** study plan are filed under its official sections, in study order:
 
 ```
-sql-solutions/
-└── LeetCode/
-    ├── 01-Select/                                    (5)
-    │   └── 1757-recyclable-and-low-fat-products/
-    │       ├── README.md                             ← includes "SQL 50 · Select · 1 of 5"
-    │       └── solution.sql
-    ├── 02-Basic-Joins/                               (9)
-    ├── 03-Basic-Aggregate-Functions/                 (8)
-    ├── 04-Sorting-and-Grouping/                      (7)
-    ├── 05-Advanced-Select-and-Joins/                 (7)
-    ├── 06-Subqueries/                                (7)
-    └── 07-Advanced-String-Functions-Regex-Clause/    (7)
+sql-solutions/                                    ← sections sit right at the root
+├── 01-Select/                                    (5)
+│   └── 1757-recyclable-and-low-fat-products/
+│       ├── README.md                             ← includes "SQL 50 · Select · 1 of 5"
+│       └── solution.sql
+├── 02-Basic-Joins/                               (9)
+├── 03-Basic-Aggregate-Functions/                 (8)
+├── 04-Sorting-and-Grouping/                      (7)
+├── 05-Advanced-Select-and-Joins/                 (7)
+├── 06-Subqueries/                                (7)
+└── 07-Advanced-String-Functions-Regex-Clause/    (7)
 ```
+
+An SQL-only repository holds just LeetCode, so there's no `LeetCode/` folder ("Sections at root"). Prefer one? Choose **Inside LeetCode/** in the SQL folder structure setting.
 
 **SQL problems outside SQL 50** go to a folder named after the main SQL concept your solution uses, because LeetCode tags every SQL problem only "Database". The concept is picked by fixed rules (no AI), most advanced first: Data-Modification, Window-Functions, CTE, Subqueries, Joins, Set-Operations, Aggregation, Date-Functions, String-Functions, Conditional-Logic, Basic-Select. Such a problem stays in the folder it first landed in, even if you solve it again a different way. Prefer Easy / Medium / Hard folders instead? Choose **By difficulty**.
 

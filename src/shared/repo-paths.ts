@@ -7,7 +7,11 @@ import { sql50Entry } from './sql50';
 import { sqlTopic } from './sql-topics';
 
 export type Platform = 'leetcode' | 'gfg';
-export type FolderLayout = 'platform/topic/problem' | 'platform/difficulty/problem' | 'platform/problem';
+/**
+ * 'topic/problem' has no platform folder: for a single-platform repository such
+ * as an SQL 50 repo (sections sit right at the root).
+ */
+export type FolderLayout = 'platform/topic/problem' | 'platform/difficulty/problem' | 'platform/problem' | 'topic/problem';
 
 export const PLATFORM_FOLDERS: Record<Platform, string> = { leetcode: 'LeetCode', gfg: 'GeeksForGeeks' };
 
@@ -121,8 +125,8 @@ export interface SolutionPaths {
  */
 export function buildSolutionPaths(rootFolder: string, layout: FolderLayout, input: PathInput, fileName = 'solution'): SolutionPaths {
   const root = normalizeRootFolder(rootFolder);
-  const segments = [root, PLATFORM_FOLDERS[input.platform]];
-  if (layout === 'platform/topic/problem') segments.push(safeSegment(groupFolder(input), 'group'));
+  const segments = layout === 'topic/problem' ? [root] : [root, PLATFORM_FOLDERS[input.platform]];
+  if (layout === 'platform/topic/problem' || layout === 'topic/problem') segments.push(safeSegment(groupFolder(input), 'group'));
   if (layout === 'platform/difficulty/problem') segments.push(safeSegment(difficultyFolder(input.difficulty), 'group'));
   segments.push(problemFolderName(input));
   return pathsInDir(segments.filter(Boolean).join('/'), input.language, fileName);
