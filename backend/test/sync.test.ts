@@ -89,10 +89,10 @@ describe('GitHub synchronization', () => {
     const c = await ready();
     const req = syncRequest({
       submissionId: '55', language: 'sql', languageVariant: 'MySQL', code: 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee;\n',
-      problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
+      problem: { id: '177', title: 'Nth Highest Salary', slug: 'nth-highest-salary', url: 'https://leetcode.com/problems/nth-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
     });
     expect((await post(c, '/v1/sync', req)).statusCode).toBe(200);
-    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Aggregation/0176-second-highest-salary/solution.sql')).toBe(true);
+    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Aggregation/0177-nth-highest-salary/solution.sql')).toBe(true);
   });
 
   it('accepts the default branch of an empty repository, but not other branches', async () => {
@@ -150,12 +150,12 @@ describe('stable problem folders', () => {
     const c = await ready();
     const sql = (id: string, code: string) => syncRequest({
       submissionId: id, language: 'sql', languageVariant: 'MySQL', code,
-      problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
+      problem: { id: '177', title: 'Nth Highest Salary', slug: 'nth-highest-salary', url: 'https://leetcode.com/problems/nth-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
     });
     await post(c, '/v1/sync', sql('1', 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee;\n'));
     const second = await post(c, '/v1/sync', sql('2', 'SELECT (SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) r FROM Employee) t WHERE r = 2) AS SecondHighestSalary;\n'));
     expect(second.json().outcome).toBe('updated');
-    const files = [...c.gh.files('octocat/dsa').keys()].filter((p) => p.includes('second-highest-salary'));
-    expect(files.sort()).toEqual(['DSA/LeetCode/Aggregation/0176-second-highest-salary/README.md', 'DSA/LeetCode/Aggregation/0176-second-highest-salary/solution.sql']);
+    const files = [...c.gh.files('octocat/dsa').keys()].filter((p) => p.includes('nth-highest-salary'));
+    expect(files.sort()).toEqual(['DSA/LeetCode/Aggregation/0177-nth-highest-salary/README.md', 'DSA/LeetCode/Aggregation/0177-nth-highest-salary/solution.sql']);
   });
 });

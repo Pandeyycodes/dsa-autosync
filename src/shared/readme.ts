@@ -5,6 +5,7 @@
 import { LANGUAGES, type LanguageId } from './languages';
 import type { ReadmePrefs, SubmissionCapture } from './schemas';
 import { PLATFORM_FOLDERS } from './repo-paths';
+import { sql50Entry } from './sql50';
 
 const PLATFORM_NAMES = { leetcode: 'LeetCode', gfg: 'GeeksforGeeks' } as const;
 
@@ -57,6 +58,8 @@ export function generateReadme(
   const langLabels = [...new Set(solutions.map((s) => LANGUAGES[s.language].label))].sort();
   rows.push(['Language' + (langLabels.length > 1 ? 's' : ''), langLabels.map(escapeInline).join(', ')]);
   if (p.topics.length) rows.push(['Topics', p.topics.map(escapeInline).join(', ')]);
+  const plan = capture.platform === 'leetcode' ? sql50Entry(p.slug) : null;
+  if (plan) rows.push(['Study plan', `[LeetCode SQL 50](https://leetcode.com/studyplan/top-sql-50/) · ${escapeInline(plan.section)} · ${plan.position} of ${plan.of}`]);
   rows.push(['Link', `[${escapeInline(p.url)}](${encodeURI(p.url)})`]);
   rows.push(['Submitted', `${capture.submittedAt.slice(0, 10)} · submission \`${capture.submissionId}\``]);
 

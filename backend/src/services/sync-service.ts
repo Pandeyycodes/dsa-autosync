@@ -1,6 +1,7 @@
 import { LANGUAGES, type LanguageId } from '../../../src/shared/languages';
 import { generateReadme, type ReadmeSolution } from '../../../src/shared/readme';
 import { buildSolutionPaths, languageOfSolutionFile, pathsInDir } from '../../../src/shared/repo-paths';
+import { sql50Entry } from '../../../src/shared/sql50';
 import type { RepoConfig, SyncRequest, SyncResponse } from '../../../src/shared/schemas';
 import { GitHubError, type ContentEntry, type GitHubClient } from '../github/client';
 import { gitBlobSha, sha256Hex } from '../lib/crypto';
@@ -67,7 +68,11 @@ export class SyncService {
     let paths = buildSolutionPaths(cfg.rootFolder, cfg.layout, pathInput);
     // A problem stays in the folder it first landed in (e.g. an SQL problem
     // re-solved with a different approach doesn't move to another topic).
-    const problemDir = (await this.findExistingProblemDir(token, repo, cfg.branch, paths.problemDir)) ?? paths.problemDir;
+    // LeetCode SQL 50 problems always use their official study-plan section.
+    const fixedSection = capture.platform === 'leetcode' && capture.language === 'sql' && !!sql50Entry(capture.problem.slug);
+    const problemDir = fixedSection
+      ? paths.problemDir
+      : ((await this.findExistingProblemDir(token, repo, cfg.branch, paths.problemDir)) ?? paths.problemDir);
     const inDir = (fileName?: string) => pathsInDir(problemDir, capture.language, fileName);
     paths = inDir();
 

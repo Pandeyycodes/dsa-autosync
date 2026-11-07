@@ -54,8 +54,8 @@ describe('README generation', () => {
     const capture = { ...syncRequest().capture, language: 'sql' as const, languageVariant: 'MySQL', problem: { ...syncRequest().capture.problem, topics: [] } };
     const md = generateReadme(capture, all, [{ language: 'sql', relativePath: 'solution.sql' }]);
     expect(md).toContain('| **Language** | SQL |');
-    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium', code: 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee);' }).solutionFile)
-      .toBe('LeetCode/Subqueries/0176-second-highest-salary/solution.sql');
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '177', slug: 'nth-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium', code: 'SELECT MAX(salary) FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee);' }).solutionFile)
+      .toBe('LeetCode/Subqueries/0177-nth-highest-salary/solution.sql');
     // SQL by topic = the SQL concept the solution uses (platform tags are only "Database")
     expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'gfg', problemId: null, slug: 'q', title: 'q', topics: ['SQL'], language: 'sql', difficulty: null }).solutionFile).toBe('GeeksForGeeks/Database/q/solution.sql');
     // difficulty layout is still available

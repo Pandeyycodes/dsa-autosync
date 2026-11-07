@@ -3,6 +3,7 @@
  * authority — it never trusts client paths) and by the UI for previews.
  */
 import { LANGUAGES, type LanguageId } from './languages';
+import { sql50Entry } from './sql50';
 import { sqlTopic } from './sql-topics';
 
 export type Platform = 'leetcode' | 'gfg';
@@ -87,8 +88,11 @@ export function difficultyFolder(difficulty: string | null | undefined): string 
  * (Joins, Aggregation, Window-Functions …); everything else by its primary
  * platform topic (Array, Tree, Graph …).
  */
-export function groupFolder(input: Pick<PathInput, 'topics' | 'language' | 'code'>): string {
+export function groupFolder(input: Pick<PathInput, 'topics' | 'language' | 'code'> & Partial<Pick<PathInput, 'platform' | 'slug'>>): string {
   if (input.language === 'sql') {
+    // LeetCode SQL 50: use the official study-plan section (01-Select … 07-Advanced-String-Functions-Regex-Clause).
+    const plan = input.platform === 'leetcode' && input.slug ? sql50Entry(input.slug) : null;
+    if (plan) return plan.folder;
     const specific = input.topics.find((t) => !/^(database|sql)$/i.test(t));
     if (specific) return specific; // a platform that does tag SQL topics wins
     return input.code ? sqlTopic(input.code) : 'Database';
