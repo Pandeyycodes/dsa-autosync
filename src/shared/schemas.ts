@@ -8,7 +8,7 @@ import { LANGUAGE_IDS } from './languages';
 export const PlatformSchema = z.enum(['leetcode', 'gfg']);
 export const LanguageIdSchema = z.enum(LANGUAGE_IDS);
 export const DuplicateStrategySchema = z.enum(['skip', 'overwrite', 'version']);
-export const FolderLayoutSchema = z.enum(['platform/topic/problem', 'platform/problem']);
+export const FolderLayoutSchema = z.enum(['platform/topic/problem', 'platform/difficulty/problem', 'platform/problem']);
 
 /** Submission ids are numeric on both platforms today; allow a safe superset. */
 export const SubmissionIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'invalid submission id');

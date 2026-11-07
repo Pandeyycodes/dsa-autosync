@@ -54,10 +54,12 @@ describe('README generation', () => {
     const capture = { ...syncRequest().capture, language: 'sql' as const, languageVariant: 'MySQL', problem: { ...syncRequest().capture.problem, topics: [] } };
     const md = generateReadme(capture, all, [{ language: 'sql', relativePath: 'solution.sql' }]);
     expect(md).toContain('| **Language** | SQL |');
-    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium' }).solutionFile)
-      .toBe('LeetCode/Medium/0176-second-highest-salary/solution.sql');
-    // SQL is grouped by difficulty, never by the generic "Database" tag; unknown difficulty -> Uncategorized
-    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'gfg', problemId: null, slug: 'q', title: 'q', topics: ['SQL'], language: 'sql', difficulty: null }).solutionFile).toBe('GeeksForGeeks/Uncategorized/q/solution.sql');
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium', code: 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee);' }).solutionFile)
+      .toBe('LeetCode/Subqueries/0176-second-highest-salary/solution.sql');
+    // SQL by topic = the SQL concept the solution uses (platform tags are only "Database")
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'gfg', problemId: null, slug: 'q', title: 'q', topics: ['SQL'], language: 'sql', difficulty: null }).solutionFile).toBe('GeeksForGeeks/Database/q/solution.sql');
+    // difficulty layout is still available
+    expect(buildSolutionPaths('', 'platform/difficulty/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium' }).solutionFile).toBe('LeetCode/Medium/0176-second-highest-salary/solution.sql');
     // non-SQL keeps topic folders
     expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'x', topics: ['Array'], language: 'python', difficulty: 'Easy' }).solutionFile).toBe('LeetCode/Array/0001-two-sum/solution.py');
   });
@@ -115,5 +117,27 @@ describe('diagrams in examples', () => {
     expect(md).toContain(['### Example 1', '', '![tree](https://assets.leetcode.com/uploads/tree.jpg)', '', '```text', 'Input: root = [1,2]', 'Output: 2', '```'].join('\n'));
     // non-https "images" stay inert inside the fence
     expect(md).toContain(['```text', '![x](javascript:alert(1))', 'Input: a', '```'].join('\n'));
+  });
+});
+
+import { sqlTopic } from '../../src/shared/sql-topics';
+
+describe('SQL topic classification (deterministic)', () => {
+  it.each([
+    ['SELECT name FROM Customer WHERE referee_id != 2 OR referee_id IS NULL;', 'Basic-Select'],
+    ['SELECT p.firstName, a.city FROM Person p LEFT JOIN Address a ON p.personId = a.personId;', 'Joins'],
+    ['SELECT w1.id FROM Weather w1, Weather w2 WHERE w1.temperature > w2.temperature;', 'Joins'],
+    ['SELECT email FROM Person GROUP BY email HAVING COUNT(*) > 1;', 'Aggregation'],
+    ['SELECT MAX(salary) FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee);', 'Subqueries'],
+    ['SELECT d.name, e.name FROM (SELECT *, DENSE_RANK() OVER (PARTITION BY departmentId ORDER BY salary DESC) r FROM Employee) e JOIN Department d ON 1=1 WHERE r <= 3;', 'Window-Functions'],
+    ['WITH t AS (SELECT * FROM Logs) SELECT * FROM t;', 'CTE'],
+    ['SELECT employee_id FROM Employees UNION SELECT employee_id FROM Salaries;', 'Set-Operations'],
+    ['SELECT user_id, CONCAT(UPPER(LEFT(name, 1)), LOWER(SUBSTRING(name, 2))) AS name FROM Users;', 'String-Functions'],
+    ["SELECT id FROM Activity WHERE DATEDIFF(event_date, '2019-07-27') < 30;", 'Date-Functions'],
+    ['SELECT x, y, z, CASE WHEN x + y > z THEN "Yes" ELSE "No" END AS triangle FROM Triangle;', 'Conditional-Logic'],
+    ['DELETE p1 FROM Person p1, Person p2 WHERE p1.email = p2.email AND p1.id > p2.id;', 'Data-Modification'],
+    ["SELECT 'JOIN GROUP BY' AS label FROM t -- JOIN in a comment\n;", 'Basic-Select'],
+  ])('%s → %s', (code, topic) => {
+    expect(sqlTopic(code)).toBe(topic);
   });
 });

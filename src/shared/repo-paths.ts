@@ -3,9 +3,10 @@
  * authority — it never trusts client paths) and by the UI for previews.
  */
 import { LANGUAGES, type LanguageId } from './languages';
+import { sqlTopic } from './sql-topics';
 
 export type Platform = 'leetcode' | 'gfg';
-export type FolderLayout = 'platform/topic/problem' | 'platform/problem';
+export type FolderLayout = 'platform/topic/problem' | 'platform/difficulty/problem' | 'platform/problem';
 
 export const PLATFORM_FOLDERS: Record<Platform, string> = { leetcode: 'LeetCode', gfg: 'GeeksForGeeks' };
 
@@ -66,6 +67,8 @@ export interface PathInput {
   topics: string[];
   language: LanguageId;
   difficulty?: string | null;
+  /** The submitted code — used to classify SQL solutions by concept. */
+  code?: string;
 }
 
 export function primaryTopic(topics: string[], language: LanguageId): string {
@@ -73,15 +76,22 @@ export function primaryTopic(topics: string[], language: LanguageId): string {
   return topics[0] ?? 'Uncategorized';
 }
 
+export function difficultyFolder(difficulty: string | null | undefined): string {
+  const d = difficulty?.trim();
+  return d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : 'Uncategorized';
+}
+
 /**
- * Grouping folder inside a platform. Platforms tag nearly every SQL problem
- * just "Database", so SQL is grouped by difficulty (Easy / Medium / Hard);
- * everything else by its primary topic (Array, Tree, Graph …).
+ * Topic folder inside a platform. Platforms tag every SQL problem just
+ * "Database", so SQL is grouped by the SQL concept its solution uses
+ * (Joins, Aggregation, Window-Functions …); everything else by its primary
+ * platform topic (Array, Tree, Graph …).
  */
-export function groupFolder(input: Pick<PathInput, 'topics' | 'language' | 'difficulty'>): string {
+export function groupFolder(input: Pick<PathInput, 'topics' | 'language' | 'code'>): string {
   if (input.language === 'sql') {
-    const d = input.difficulty?.trim();
-    return d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : 'Uncategorized';
+    const specific = input.topics.find((t) => !/^(database|sql)$/i.test(t));
+    if (specific) return specific; // a platform that does tag SQL topics wins
+    return input.code ? sqlTopic(input.code) : 'Database';
   }
   return primaryTopic(input.topics, input.language);
 }
@@ -107,15 +117,19 @@ export interface SolutionPaths {
  */
 export function buildSolutionPaths(rootFolder: string, layout: FolderLayout, input: PathInput, fileName = 'solution'): SolutionPaths {
   const root = normalizeRootFolder(rootFolder);
-  const lang = LANGUAGES[input.language];
   const segments = [root, PLATFORM_FOLDERS[input.platform]];
   if (layout === 'platform/topic/problem') segments.push(safeSegment(groupFolder(input), 'group'));
+  if (layout === 'platform/difficulty/problem') segments.push(safeSegment(difficultyFolder(input.difficulty), 'group'));
   segments.push(problemFolderName(input));
-  const problemDir = segments.filter(Boolean).join('/');
+  return pathsInDir(segments.filter(Boolean).join('/'), input.language, fileName);
+}
+
+/** Solution + README paths inside a given (already safe) problem directory. */
+export function pathsInDir(problemDir: string, language: LanguageId, fileName = 'solution'): SolutionPaths {
   const safeName = safeSegment(fileName, 'solution');
   return {
     problemDir,
-    solutionFile: `${problemDir}/${safeName}.${lang.extension}`,
+    solutionFile: `${problemDir}/${safeName}.${LANGUAGES[language].extension}`,
     readme: `${problemDir}/README.md`,
   };
 }

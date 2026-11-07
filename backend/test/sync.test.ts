@@ -85,14 +85,14 @@ describe('GitHub synchronization', () => {
     expect(readme).toContain('[C++](solution.cpp)');
   });
 
-  it('stores SQL solutions as .sql grouped by difficulty', async () => {
+  it('stores SQL solutions as .sql in a topic folder based on the SQL concept used', async () => {
     const c = await ready();
     const req = syncRequest({
       submissionId: '55', language: 'sql', languageVariant: 'MySQL', code: 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee;\n',
       problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
     });
     expect((await post(c, '/v1/sync', req)).statusCode).toBe(200);
-    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Medium/0176-second-highest-salary/solution.sql')).toBe(true);
+    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Aggregation/0176-second-highest-salary/solution.sql')).toBe(true);
   });
 
   it('accepts the default branch of an empty repository, but not other branches', async () => {
@@ -142,5 +142,20 @@ describe('GitHub synchronization', () => {
     const c = await ready();
     const { repo: _omit, ...noRepo } = syncRequest();
     expect((await post(c, '/v1/sync', noRepo)).statusCode).toBe(400);
+  });
+});
+
+describe('stable problem folders', () => {
+  it('keeps an SQL problem in its first folder when re-solved with a different approach', async () => {
+    const c = await ready();
+    const sql = (id: string, code: string) => syncRequest({
+      submissionId: id, language: 'sql', languageVariant: 'MySQL', code,
+      problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
+    });
+    await post(c, '/v1/sync', sql('1', 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee;\n'));
+    const second = await post(c, '/v1/sync', sql('2', 'SELECT (SELECT DISTINCT salary FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) r FROM Employee) t WHERE r = 2) AS SecondHighestSalary;\n'));
+    expect(second.json().outcome).toBe('updated');
+    const files = [...c.gh.files('octocat/dsa').keys()].filter((p) => p.includes('second-highest-salary'));
+    expect(files.sort()).toEqual(['DSA/LeetCode/Aggregation/0176-second-highest-salary/README.md', 'DSA/LeetCode/Aggregation/0176-second-highest-salary/solution.sql']);
   });
 });

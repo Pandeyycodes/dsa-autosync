@@ -259,7 +259,7 @@ describe('SQL repository settings', () => {
     await waitFor(() => expect(within(select).getByRole('option', { name: 'octocat/sql-solutions' })).toBeInTheDocument());
     await user.selectOptions(select, '20');
     await waitFor(() => expect(screen.getByLabelText('SQL branch')).toHaveValue('main'));
-    expect(screen.getByText('LeetCode/Medium/0176-second-highest-salary/solution.sql')).toBeInTheDocument();
+    expect(screen.getByText('LeetCode/Subqueries/0176-second-highest-salary/solution.sql')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save SQL repository' }));
     expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '20', branch: 'main', rootFolder: '', layout: 'platform/topic/problem', target: 'sql' });
 

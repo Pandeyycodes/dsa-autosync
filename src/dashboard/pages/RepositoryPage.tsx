@@ -26,7 +26,7 @@ function folderError(v: string): string | null {
 /** Preview problems used to show where a file will land. */
 const SAMPLE: Record<RepoTargetKind, PathInput> = {
   main: { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'Two Sum', topics: ['Array'], language: 'python', difficulty: 'Easy' },
-  sql: { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'Second Highest Salary', topics: ['Database'], language: 'sql', difficulty: 'Medium' },
+  sql: { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'Second Highest Salary', topics: ['Database'], language: 'sql', difficulty: 'Medium', code: 'SELECT MAX(salary) FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee);' },
 };
 
 interface EditorProps {
@@ -134,10 +134,14 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
       </SettingRow>
       <SettingRow
         title={sql ? 'SQL folder structure' : 'Folder structure'}
-        description={sql ? 'Group SQL problems by difficulty (Easy / Medium / Hard), or keep a flat list.' : 'Group problems by topic (SQL by difficulty), or keep a flat list per platform.'}
+        description={
+          sql
+            ? 'By topic = the SQL concept your solution uses (Joins, Aggregation, Window-Functions …). Or group by difficulty, or keep a flat list.'
+            : 'By topic (Array, Tree …; SQL by concept used), by difficulty, or a flat list per platform.'
+        }
       >
         <div role="radiogroup" aria-label={sql ? 'SQL folder structure' : 'Folder structure'} className="flex rounded-md border border-line bg-canvas p-0.5">
-          {([['platform/topic/problem', sql ? 'By difficulty' : 'By topic'], ['platform/problem', 'Flat']] as const).map(([value, label]) => (
+          {([['platform/topic/problem', 'By topic'], ['platform/difficulty/problem', 'By difficulty'], ['platform/problem', 'Flat']] as const).map(([value, label]) => (
             <button key={value} type="button" role="radio" aria-checked={layout === value} onClick={() => setLayout(value)}
               className={cn('focus-ring h-6 rounded-[5px] px-2.5 text-xs font-medium transition-colors', layout === value ? 'bg-surface-active text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
               {label}

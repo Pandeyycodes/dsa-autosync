@@ -153,6 +153,18 @@ export class FakeGitHub {
       return sha ? this.json(200, { object: { sha } }) : this.json(404, { message: 'Not Found' });
     }
     if (rest.startsWith('git/commits/') && method === 'GET') return this.json(200, { sha: rest.slice(12), tree: { sha: `tree-${rest.slice(12)}` } });
+    if (rest.startsWith('git/trees/') && method === 'GET') {
+      if (!r.branches.size) return this.json(409, { message: 'Git Repository is empty.' });
+      const head = r.branches.get(rest.slice(10));
+      if (!head) return this.json(404, { message: 'Not Found' });
+      const entries = new Map<string, string>();
+      for (const p of r.commits.get(head)!.tree.keys()) {
+        const segs = p.split('/');
+        for (let i = 1; i < segs.length; i++) entries.set(segs.slice(0, i).join('/'), 'tree');
+        entries.set(p, 'blob');
+      }
+      return this.json(200, { tree: [...entries].map(([path, type]) => ({ path, type })), truncated: false });
+    }
     if (rest === 'git/trees' && method === 'POST') {
       const err = write(); if (err) return err;
       const base = String(b.base_tree).replace('tree-', '');

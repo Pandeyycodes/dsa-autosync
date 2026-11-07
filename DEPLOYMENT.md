@@ -100,7 +100,7 @@ npm run build
 3. **LeetCode:** submit a correct solution.
    - Dashboard → **Activity** shows *Verifying → Uploaded*; click the commit icon.
    - A wrong answer shows as *Ignored*.
-   - A SQL problem lands in `…/Medium/0176-second-highest-salary/solution.sql` (or your SQL repository, if set).
+   - A SQL problem lands in `…/Subqueries/0176-second-highest-salary/solution.sql` or similar, by SQL concept (or in your SQL repository, if set).
 4. **GeeksforGeeks:** do the same on a `/problems/<slug>/1` page.
    - If it shows *Code unavailable* or *Unknown*, GfG's private web API has changed. Compare the Network tab with `src/content/gfg/adapter.ts`.
 

@@ -37,15 +37,19 @@ DSA/
         └── reverse-a-linked-list/
 ```
 
-**SQL gets its own repository** (optional), grouped by difficulty:
+**SQL can go to its own repository** (optional), sorted by **topic**:
 
 ```
 sql-solutions/
 └── LeetCode/
-    ├── Easy/0175-combine-two-tables/solution.sql
-    ├── Medium/0176-second-highest-salary/solution.sql
-    └── Hard/0185-department-top-three-salaries/solution.sql
+    ├── Basic-Select/1757-recyclable-and-low-fat-products/solution.sql
+    ├── Joins/0175-combine-two-tables/solution.sql
+    ├── Aggregation/0182-duplicate-emails/solution.sql
+    ├── Subqueries/0176-second-highest-salary/solution.sql
+    └── Window-Functions/0185-department-top-three-salaries/solution.sql
 ```
+
+LeetCode tags every SQL problem only "Database", so the topic is the **main SQL concept your solution uses**. It's decided by fixed rules (no AI), and the most advanced concept wins: Data-Modification → Window-Functions → CTE → Subqueries → Joins → Set-Operations → Aggregation → Date-Functions → String-Functions → Conditional-Logic → Basic-Select. A problem stays in the folder it first landed in, even if you solve it again a different way. Prefer Easy / Medium / Hard folders? Choose **By difficulty**.
 
 Each problem's **README** contains:
 - the title, difficulty, topics and a link to the problem;
@@ -58,7 +62,7 @@ Each problem's **README** contains:
 |---|---|
 | ✅ **Accepted only** | The verdict is checked through the platform's own data for that exact submission |
 | 📄 **Exact code** | Fetches the submitted code, never what's left in the editor |
-| 🗂️ **Organised folders** | Platform → topic → problem. SQL goes by difficulty. A flat layout is available |
+| 🗂️ **Organised folders** | Platform → topic → problem (SQL by concept: Joins, Aggregation …). By-difficulty and flat layouts are also available |
 | 🧾 **Auto README** | Statement, examples, diagrams and constraints, copied as-is, nothing invented |
 | 🗄️ **Separate SQL repo** | Optionally send SQL solutions to their own repository |
 | 🔁 **No duplicates** | The same code is never committed twice. Changed code updates the file (configurable) |

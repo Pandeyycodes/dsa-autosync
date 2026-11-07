@@ -1,6 +1,6 @@
 import { LANGUAGES, type LanguageId } from '../../../src/shared/languages';
 import { generateReadme, type ReadmeSolution } from '../../../src/shared/readme';
-import { buildSolutionPaths, languageOfSolutionFile } from '../../../src/shared/repo-paths';
+import { buildSolutionPaths, languageOfSolutionFile, pathsInDir } from '../../../src/shared/repo-paths';
 import type { RepoConfig, SyncRequest, SyncResponse } from '../../../src/shared/schemas';
 import { GitHubError, type ContentEntry, type GitHubClient } from '../github/client';
 import { gitBlobSha, sha256Hex } from '../lib/crypto';
@@ -62,8 +62,14 @@ export class SyncService {
       topics: capture.problem.topics,
       language: capture.language,
       difficulty: capture.problem.difficulty,
+      code: capture.code,
     };
     let paths = buildSolutionPaths(cfg.rootFolder, cfg.layout, pathInput);
+    // A problem stays in the folder it first landed in (e.g. an SQL problem
+    // re-solved with a different approach doesn't move to another topic).
+    const problemDir = (await this.findExistingProblemDir(token, repo, cfg.branch, paths.problemDir)) ?? paths.problemDir;
+    const inDir = (fileName?: string) => pathsInDir(problemDir, capture.language, fileName);
+    paths = inDir();
 
     const existing = await this.github.getContent(token, repo, paths.solutionFile, cfg.branch);
     let outcome: 'created' | 'updated' = 'created';
@@ -75,7 +81,7 @@ export class SyncService {
         return { outcome: 'skipped_exists', paths: [paths.solutionFile], commitSha: null, commitUrl: null };
       }
       if (req.duplicateStrategy === 'version') {
-        paths = buildSolutionPaths(cfg.rootFolder, cfg.layout, pathInput, `solution-${capture.submissionId}`);
+        paths = inDir(`solution-${capture.submissionId}`);
         const versioned = await this.github.getContent(token, repo, paths.solutionFile, cfg.branch);
         if (versioned && !Array.isArray(versioned) && versioned.sha === gitBlobSha(capture.code)) {
           return { outcome: 'unchanged', paths: [paths.solutionFile], commitSha: null, commitUrl: null };
@@ -110,6 +116,26 @@ export class SyncService {
     ];
     const commit = await this.commit(token, repo, cfg.branch, message, files);
     return { outcome, paths: files.map((f) => f.path), commitSha: commit.sha, commitUrl: commit.url };
+  }
+
+  /**
+   * If this problem's folder already exists anywhere under the same platform
+   * folder (e.g. DSA/LeetCode/<any group>/0176-second-highest-salary), reuse it.
+   */
+  private async findExistingProblemDir(token: string, repo: string, branch: string, planned: string): Promise<string | null> {
+    const parts = planned.split('/');
+    const problem = parts.pop()!;
+    const platformIdx = parts.findIndex((p) => p === 'LeetCode' || p === 'GeeksForGeeks');
+    if (platformIdx < 0) return null;
+    const platformDir = parts.slice(0, platformIdx + 1).join('/');
+    const tree = await this.github.getTree(token, repo, branch);
+    if (!tree) return null;
+    const match = tree.find((e) => {
+      if (e.type !== 'tree' || !e.path.startsWith(platformDir + '/')) return false;
+      const rest = e.path.slice(platformDir.length + 1).split('/');
+      return rest[rest.length - 1] === problem && rest.length <= 2;
+    });
+    return match?.path ?? null;
   }
 
   /** Single atomic commit via the Git Data API; retries if the branch moved meanwhile. */

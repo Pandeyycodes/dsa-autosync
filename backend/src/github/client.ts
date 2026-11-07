@@ -186,6 +186,17 @@ export class GitHubClient {
     return this.request<{ sha: string }>('POST', `/repos/${fullName}/git/blobs`, token, { content, encoding: 'utf-8' });
   }
 
+  /** All paths on a branch (recursive tree). null for an empty repo / missing branch. */
+  async getTree(token: string, fullName: string, branch: string): Promise<{ path: string; type: string }[] | null> {
+    try {
+      const res = await this.request<{ tree: { path: string; type: string }[] }>('GET', `/repos/${fullName}/git/trees/${enc(branch)}?recursive=1`, token);
+      return res.tree;
+    } catch (e) {
+      if (e instanceof GitHubError && (e.kind === 'not_found' || e.kind === 'conflict')) return null;
+      throw e;
+    }
+  }
+
   getRef(token: string, fullName: string, branch: string) {
     return this.request<{ object: { sha: string } }>('GET', `/repos/${fullName}/git/ref/heads/${enc(branch)}`, token);
   }
