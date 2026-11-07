@@ -104,3 +104,4 @@ See the implementation report in the final message of the build session, or run 
 - **Premium problems.** For paid-only LeetCode problems you can't access, no statement is included. Nothing is invented.
 - **No database, by design (personal use).** There is no server-side session revocation list (Disconnect revokes the GitHub grant instead), and history is per browser. For a public multi-user launch, add Postgres; see DEPLOYMENT.md.
 - **Rate limiting and duplicate suppression are in memory**, so they reset on restart. GitHub content-hash checks still prevent duplicate commits.
+"# dsa-autosync" 
