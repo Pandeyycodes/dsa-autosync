@@ -1,0 +1,31 @@
+# Dependencies & build output
+node_modules/
+dist/
+backend/dist/
+*.zip
+*.tsbuildinfo
+
+# Secrets — never commit (use the *.example files as templates)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+*.pem
+*.key
+
+# Local-only dev extension key (gives unpacked builds a fixed ID)
+.dev-extension-key.json
+
+# Local database data (if ever used)
+backend/.pgdata/
+
+# Editor / OS / tooling
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+coverage/
