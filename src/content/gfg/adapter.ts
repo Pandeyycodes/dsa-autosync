@@ -15,13 +15,38 @@ import { normalizeGfgResult, type Verdict } from '@/shared/verdict';
 import { CaptureError, type Http } from '../common';
 import { extractProblemContent } from '../problem-html';
 
-export const SUBMIT_RE = /^(https:\/\/practiceapi(?:origin)?\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/)problems\/([A-Za-z0-9_.-]+)\/submit\/compile\/?(?:\?.*)?$/;
-export const RESULT_RE = /^https:\/\/practiceapi(?:origin)?\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/problems\/submission\/submit\/result\/?(?:\?.*)?$/;
+/** Any GfG API host (practiceapi, practiceapiorigin, …) — `/api/<version>/problems/<slug>/submit/compile/`. */
+export const API_HOST_RE = /^https:\/\/[a-z0-9-]+\.geeksforgeeks\.org\//;
+export const SUBMIT_RE = /^(https:\/\/[a-z0-9-]+\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/)problems\/([A-Za-z0-9_.-]+)\/submit\/compile\/?(?:\?.*)?$/;
+export const RESULT_RE = /^https:\/\/[a-z0-9-]+\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/problems\/submission\/submit\/result\/?(?:\?.*)?$/;
+
+const ID_KEYS = ['submission_id', 'sub_id', 'submissionId'];
+
+/** Find a submission id anywhere in the first few levels of a response. */
+export function findSubmissionId(body: unknown, depth = 0): string | null {
+  if (!body || typeof body !== 'object' || depth > 3) return null;
+  const o = body as Record<string, unknown>;
+  for (const k of ID_KEYS) {
+    const v = o[k];
+    if ((typeof v === 'string' || typeof v === 'number') && /^[A-Za-z0-9_-]{1,64}$/.test(String(v))) return String(v);
+  }
+  for (const v of Object.values(o)) {
+    const found = findSubmissionId(v, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
 
 export function parseSubmitResponse(body: unknown): string | null {
-  const r = body as { results?: { submission_id?: unknown }; submission_id?: unknown } | null;
-  const id = r?.results?.submission_id ?? r?.submission_id;
-  return (typeof id === 'string' || typeof id === 'number') && /^[A-Za-z0-9_-]{1,64}$/.test(String(id)) ? String(id) : null;
+  return findSubmissionId(body);
+}
+
+/** Field *names* only (no values) — safe to print for diagnostics. */
+export function describeShape(body: unknown, depth = 0): string {
+  if (Array.isArray(body)) return `[${body.length}]`;
+  if (!body || typeof body !== 'object') return typeof body;
+  if (depth >= 2) return '{…}';
+  return `{${Object.entries(body as Record<string, unknown>).slice(0, 25).map(([k, v]) => `${k}:${describeShape(v, depth + 1)}`).join(', ')}}`;
 }
 
 export function verdictFromResult(body: unknown): Verdict {
@@ -76,7 +101,7 @@ async function problemData(slug: string, deps: GfgDeps): Promise<GfgProblemData>
 
 /** Retrieve the exact accepted code for this submission id and assemble the capture. */
 export async function captureAccepted(submissionId: string, slug: string, apiBase: string, deps: GfgDeps): Promise<SubmissionCapture> {
-  if (!/^https:\/\/practiceapi(?:origin)?\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/$/.test(apiBase)) {
+  if (!/^https:\/\/[a-z0-9-]+\.geeksforgeeks\.org\/api\/[A-Za-z0-9_-]+\/$/.test(apiBase)) {
     throw new CaptureError('CODE_UNAVAILABLE', 'Unrecognised GeeksforGeeks API base.');
   }
   const res = await deps.http(`${apiBase}problems/submissions/${encodeURIComponent(submissionId)}/`, { credentials: 'include' });
