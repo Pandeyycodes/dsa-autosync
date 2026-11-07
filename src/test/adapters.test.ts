@@ -236,3 +236,16 @@ describe('GeeksforGeeks network observation (real client shape)', () => {
     expect(m?.[2]).toBe('reverse-a-linked-list');
   });
 });
+
+describe('stale tab after an extension update', () => {
+  it('shows a refresh notice instead of silently dropping the submission', async () => {
+    const { toBackground } = await import('@/content/common');
+    const g = globalThis as { chrome?: unknown };
+    const saved = g.chrome;
+    g.chrome = { runtime: {} }; // runtime.id missing = context invalidated
+    const res = await toBackground({ type: 'content/pending', platform: 'leetcode' });
+    expect(res).toBeNull();
+    expect(document.body.textContent).toContain('CodeSync was updated — refresh this page');
+    g.chrome = saved;
+  });
+});
