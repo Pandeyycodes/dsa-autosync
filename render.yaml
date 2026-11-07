@@ -1,0 +1,28 @@
+# Render Blueprint for the stateless CodeSync backend (no database).
+# Render dashboard → New → Blueprint → select this repository.
+services:
+  - type: web
+    name: codesync-api
+    runtime: node
+    plan: starter # "free" works but sleeps after ~15 min idle (slow first request)
+    rootDir: .
+    buildCommand: cd backend && npm ci && npm run build
+    startCommand: cd backend && npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: PUBLIC_URL
+        sync: false
+      - key: GITHUB_APP_CLIENT_ID
+        sync: false
+      - key: GITHUB_APP_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_APP_SLUG
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: ALLOWED_EXTENSION_IDS
+        sync: false
