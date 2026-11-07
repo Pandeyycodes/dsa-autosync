@@ -253,3 +253,24 @@ describe('separate SQL repository', () => {
     expect((await job(h.kv, 'leetcode:2')).error?.code).toBe('REPO_NOT_CONFIGURED');
   });
 });
+
+describe('settings migration', () => {
+  it('moves an SQL repository saved with the old default to sections at the root, once', async () => {
+    const { runMigrations } = await import('@/background/migrate');
+    const kv = createMemoryKV({ [KEYS.account]: account({ sqlRepo: { repositoryId: '20', fullName: 'octocat/sql-50', branch: 'main', rootFolder: '', layout: 'platform/topic/problem' } }) });
+    expect(await runMigrations(kv)).toEqual(['sql-root-sections']);
+    expect((await kv.get<{ sqlRepo: { layout: string } }>(KEYS.account))!.sqlRepo.layout).toBe('topic/problem');
+    // the user can choose "Inside LeetCode/" again later; the migration never re-runs
+    const a = (await kv.get<Record<string, unknown>>(KEYS.account))!;
+    await kv.set(KEYS.account, { ...a, sqlRepo: { ...(a.sqlRepo as object), layout: 'platform/topic/problem' } });
+    expect(await runMigrations(kv)).toEqual([]);
+    expect((await kv.get<{ sqlRepo: { layout: string } }>(KEYS.account))!.sqlRepo.layout).toBe('platform/topic/problem');
+  });
+
+  it('leaves the main repository untouched', async () => {
+    const { runMigrations } = await import('@/background/migrate');
+    const kv = createMemoryKV({ [KEYS.account]: account() });
+    await runMigrations(kv);
+    expect((await kv.get<{ repo: { layout: string } }>(KEYS.account))!.repo.layout).toBe('platform/topic/problem');
+  });
+});

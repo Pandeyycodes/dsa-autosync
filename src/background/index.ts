@@ -8,6 +8,7 @@ import { createChromeKV } from '@/shared/storage';
 import { BackendClient } from './api';
 import { AuthManager } from './auth';
 import { JobService } from './jobs';
+import { runMigrations } from './migrate';
 import { handleMessage } from './router';
 
 const kv = createChromeKV();
@@ -44,7 +45,8 @@ chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === RETRY_ALARM) void jobs.recover();
 });
 chrome.runtime.onStartup.addListener(() => void jobs.recover());
-void jobs.recover();
+// Apply one-time settings migrations before the queue uploads anything.
+void runMigrations(kv).finally(() => jobs.recover());
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender, {
