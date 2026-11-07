@@ -31,12 +31,18 @@ function inline(node: Node): string {
       const href = node.getAttribute('href') ?? '';
       return /^https?:\/\//.test(href) ? `[${kids()}](${href})` : kids();
     }
-    case 'img': {
-      const src = node.getAttribute('src') ?? '';
-      return /^https:\/\//.test(src) ? `![${node.getAttribute('alt') ?? 'image'}](${src})` : '';
-    }
+    case 'img':
+      return imageMarkdown(node);
     default: return kids();
   }
+}
+
+/** Diagrams: keep https images as Markdown (alt text sanitised); drop anything else. */
+function imageMarkdown(img: Element): string {
+  const src = (img.getAttribute('src') ?? '').trim();
+  if (!/^https:\/\/[^\s()<>]+$/.test(src)) return '';
+  const alt = (img.getAttribute('alt') ?? '').replace(/[[\]\n\r]/g, ' ').trim().slice(0, 200) || 'diagram';
+  return `![${alt}](${src})`;
 }
 
 function block(el: Element): string {
@@ -60,6 +66,7 @@ function exampleText(el: Element): string {
     if (n.nodeType === Node.TEXT_NODE) { lines.push(n.textContent ?? ''); return; }
     if (!(n instanceof Element)) return;
     if (n.tagName === 'BR') { lines.push('\n'); return; }
+    if (n.tagName === 'IMG') { const md = imageMarkdown(n); if (md) lines.push(`\n${md}\n`); return; }
     const isBlock = /^(P|DIV|PRE|LI)$/.test(n.tagName);
     if (isBlock) lines.push('\n');
     n.childNodes.forEach(walk);
@@ -107,14 +114,18 @@ export function extractProblemContent(html: string | null | undefined): ProblemC
       continue;
     }
     const text = clean(node.textContent ?? '');
-    if (!text && node.tagName !== 'IMG') continue;
+    const hasImage = node.tagName === 'IMG' || !!node.querySelector('img');
+    if (!text && !hasImage) continue;
 
     if (EXAMPLE_INLINE_RE.test(text) && node.tagName !== 'PRE') {
       flush();
       mode = 'example';
       current = [];
       const rest = text.replace(EXAMPLE_INLINE_RE, '').trim();
-      if (rest && !EXAMPLE_RE.test(text)) current.push(exampleText(node).replace(EXAMPLE_INLINE_RE, '').trim());
+      if ((rest && !EXAMPLE_RE.test(text)) || hasImage) {
+        const body = exampleText(node).replace(EXAMPLE_INLINE_RE, '').trim();
+        if (body) current.push(body);
+      }
       continue;
     }
     if (CONSTRAINTS_RE.test(text)) {

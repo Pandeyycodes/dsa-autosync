@@ -82,11 +82,15 @@ export function problemFolderName(input: Pick<PathInput, 'platform' | 'problemId
 
 export interface SolutionPaths {
   problemDir: string;
-  languageDir: string;
   solutionFile: string;
   readme: string;
 }
 
+/**
+ * <root>/<Platform>/<Topic>/<problem>/solution.<ext> + README.md
+ * Each language is just a different extension in the same folder
+ * (solution.py, solution.cpp, solution.sql …), so they never collide.
+ */
 export function buildSolutionPaths(rootFolder: string, layout: FolderLayout, input: PathInput, fileName = 'solution'): SolutionPaths {
   const root = normalizeRootFolder(rootFolder);
   const lang = LANGUAGES[input.language];
@@ -94,12 +98,17 @@ export function buildSolutionPaths(rootFolder: string, layout: FolderLayout, inp
   if (layout === 'platform/topic/problem') segments.push(safeSegment(primaryTopic(input.topics, input.language), 'topic'));
   segments.push(problemFolderName(input));
   const problemDir = segments.filter(Boolean).join('/');
-  const languageDir = `${problemDir}/${lang.folder}`;
   const safeName = safeSegment(fileName, 'solution');
   return {
     problemDir,
-    languageDir,
-    solutionFile: `${languageDir}/${safeName}.${lang.extension}`,
+    solutionFile: `${problemDir}/${safeName}.${lang.extension}`,
     readme: `${problemDir}/README.md`,
   };
+}
+
+/** Recognise CodeSync solution files ("solution.py", "solution-123.cpp") → language. */
+export function languageOfSolutionFile(name: string): LanguageId | null {
+  const m = /^solution(?:-[A-Za-z0-9_-]+)?\.([a-z]+)$/.exec(name);
+  if (!m) return null;
+  return (Object.values(LANGUAGES).find((l) => l.extension === m[1])?.id as LanguageId | undefined) ?? null;
 }

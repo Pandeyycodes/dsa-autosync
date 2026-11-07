@@ -33,6 +33,9 @@ export function neutralizeHtml(markdown: string): string {
     .trim();
 }
 
+/** A Markdown image line pointing at an https URL (alt text without brackets/newlines). */
+export const IMAGE_LINE = /^!\[[^\][\n]{0,200}\]\(https:\/\/[^\s()<>]+\)$/;
+
 function fence(text: string, lang = 'text'): string {
   const longest = Math.max(2, ...(text.match(/`+/g) ?? []).map((m) => m.length));
   const ticks = '`'.repeat(longest + 1);
@@ -64,7 +67,15 @@ export function generateReadme(
   }
   if (prefs.includeExamples && p.examples.length) {
     lines.push('## Examples', '');
-    p.examples.forEach((ex, i) => lines.push(`### Example ${i + 1}`, '', fence(ex), ''));
+    p.examples.forEach((ex, i) => {
+      // Diagrams (https images from the platform) render as images above the example text.
+      const all = ex.split('\n');
+      const images = all.map((l) => l.trim()).filter((l) => IMAGE_LINE.test(l));
+      const text = all.filter((l) => !IMAGE_LINE.test(l.trim())).join('\n').trim();
+      lines.push(`### Example ${i + 1}`, '');
+      for (const img of images) lines.push(img, '');
+      if (text) lines.push(fence(text), '');
+    });
   }
   if (prefs.includeConstraints && p.constraints.length) {
     lines.push('## Constraints', '', ...p.constraints.map((c) => `- ${neutralizeHtml(c).replace(/\r?\n/g, ' ')}`), '');

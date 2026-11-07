@@ -10,19 +10,19 @@ const none = { includeStatement: false, includeExamples: false, includeConstrain
 describe('README generation', () => {
   it('renders multiple examples and constraints deterministically', () => {
     const capture = { ...syncRequest().capture, problem: { ...syncRequest().capture.problem, examples: ['a = 1', 'a = 2', 'a = 3'] } };
-    const a = generateReadme(capture, all, [{ language: 'python', relativePath: 'Python/solution.py' }]);
-    const b = generateReadme(capture, all, [{ language: 'python', relativePath: 'Python/solution.py' }]);
+    const a = generateReadme(capture, all, [{ language: 'python', relativePath: 'solution.py' }]);
+    const b = generateReadme(capture, all, [{ language: 'python', relativePath: 'solution.py' }]);
     expect(a).toBe(b);
     expect(a).toContain('### Example 1');
     expect(a).toContain('### Example 3');
     expect(a).toContain('## Constraints');
     expect(a).toContain('| **Problem ID** | 1 |');
-    expect(a).toContain('[Python](Python/solution.py)');
+    expect(a).toContain('[Python](solution.py)');
   });
 
   it('omits missing sections instead of fabricating them', () => {
     const capture = { ...syncRequest().capture, problem: { ...syncRequest().capture.problem, difficulty: null, topics: [], constraints: [], examples: [], statementMarkdown: null } };
-    const md = generateReadme(capture, all, [{ language: 'python', relativePath: 'Python/solution.py' }]);
+    const md = generateReadme(capture, all, [{ language: 'python', relativePath: 'solution.py' }]);
     expect(md).not.toContain('## Constraints');
     expect(md).not.toContain('## Examples');
     expect(md).not.toContain('## Problem Statement');
@@ -31,7 +31,7 @@ describe('README generation', () => {
   });
 
   it('respects README content preferences', () => {
-    const md = generateReadme(syncRequest().capture, none, [{ language: 'python', relativePath: 'Python/solution.py' }]);
+    const md = generateReadme(syncRequest().capture, none, [{ language: 'python', relativePath: 'solution.py' }]);
     expect(md).not.toContain('## Problem Statement');
     expect(md).not.toContain('## Examples');
     expect(md).toContain('| **Link** |');
@@ -42,7 +42,7 @@ describe('README generation', () => {
       ...syncRequest().capture,
       problem: { ...syncRequest().capture.problem, title: 'A | B *bold* <img src=x onerror=alert(1)>', statementMarkdown: 'Use <b>tags</b>\n\n```\nif (a < b) {}\n```', examples: ['contains ``` backticks'] },
     };
-    const md = generateReadme(capture, all, [{ language: 'python', relativePath: 'Python/solution.py' }]);
+    const md = generateReadme(capture, all, [{ language: 'python', relativePath: 'solution.py' }]);
     expect(md).toContain('A \\| B \\*bold\\* \&lt;img');
     expect(md).not.toContain('<img');
     expect(md).toContain('&lt;b&gt;tags');
@@ -52,17 +52,17 @@ describe('README generation', () => {
 
   it('handles SQL questions', () => {
     const capture = { ...syncRequest().capture, language: 'sql' as const, languageVariant: 'MySQL', problem: { ...syncRequest().capture.problem, topics: [] } };
-    const md = generateReadme(capture, all, [{ language: 'sql', relativePath: 'SQL/solution.sql' }]);
+    const md = generateReadme(capture, all, [{ language: 'sql', relativePath: 'solution.sql' }]);
     expect(md).toContain('| **Language** | SQL |');
     expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: [], language: 'sql' }).solutionFile)
-      .toBe('LeetCode/Database/0176-second-highest-salary/SQL/solution.sql');
+      .toBe('LeetCode/Database/0176-second-highest-salary/solution.sql');
   });
 
   it('lists multiple languages', () => {
     const md = generateReadme(syncRequest().capture, none, [
-      { language: 'python', relativePath: 'Python/solution.py' },
-      { language: 'cpp', relativePath: 'Cpp/' },
-      { language: 'java', relativePath: 'Java/' },
+      { language: 'python', relativePath: 'solution.py' },
+      { language: 'cpp', relativePath: 'solution.cpp' },
+      { language: 'java', relativePath: 'solution.java' },
     ]);
     expect(md).toContain('| **Languages** | C++, Java, Python |');
     expect(md).toContain('## Solutions');
@@ -70,7 +70,7 @@ describe('README generation', () => {
 
   it('handles Unicode problem titles safely', () => {
     const capture = { ...syncRequest().capture, platform: 'gfg' as const, problem: { ...syncRequest().capture.problem, id: null, title: 'Café Ñandú — 数组', slug: 'cafe-nandu', url: 'https://www.geeksforgeeks.org/problems/cafe-nandu/1' } };
-    const md = generateReadme(capture, none, [{ language: 'java', relativePath: 'Java/solution.java' }]);
+    const md = generateReadme(capture, none, [{ language: 'java', relativePath: 'solution.java' }]);
     expect(md).toContain('# Café Ñandú — 数组');
     expect(safeSegment('Café Ñandú')).toBe('Cafe-Nandu');
     expect(safeSegment('数组')).toMatch(/^item-[0-9a-f]{8}$/);
@@ -82,7 +82,7 @@ describe('README generation', () => {
 describe('paths and languages', () => {
   it('builds the configured layouts for both platforms', () => {
     const input = { platform: 'gfg' as const, problemId: '700005', slug: 'reverse-a-linked-list', title: 'Reverse', topics: ['Linked List'], language: 'cpp' as const };
-    expect(buildSolutionPaths('DSA', 'platform/topic/problem', input).solutionFile).toBe('DSA/GeeksForGeeks/Linked-List/reverse-a-linked-list/Cpp/solution.cpp');
+    expect(buildSolutionPaths('DSA', 'platform/topic/problem', input).solutionFile).toBe('DSA/GeeksForGeeks/Linked-List/reverse-a-linked-list/solution.cpp');
     expect(buildSolutionPaths('', 'platform/problem', input).readme).toBe('GeeksForGeeks/reverse-a-linked-list/README.md');
   });
 
@@ -97,5 +97,19 @@ describe('paths and languages', () => {
     expect(resolveLanguage('golang')?.id).toBe('go');
     expect(resolveLanguage('C#')?.id).toBe('csharp');
     expect(resolveLanguage('scala')).toBeNull();
+  });
+});
+
+describe('diagrams in examples', () => {
+  it('renders example images as Markdown images outside the code fence', () => {
+    const examples = [
+      ['![tree](https://assets.leetcode.com/uploads/tree.jpg)', 'Input: root = [1,2]', 'Output: 2'].join('\n'),
+      ['![x](javascript:alert(1))', 'Input: a'].join('\n'),
+    ];
+    const capture = { ...syncRequest().capture, problem: { ...syncRequest().capture.problem, examples } };
+    const md = generateReadme(capture, all, [{ language: 'python', relativePath: 'solution.py' }]);
+    expect(md).toContain(['### Example 1', '', '![tree](https://assets.leetcode.com/uploads/tree.jpg)', '', '```text', 'Input: root = [1,2]', 'Output: 2', '```'].join('\n'));
+    // non-https "images" stay inert inside the fence
+    expect(md).toContain(['```text', '![x](javascript:alert(1))', 'Input: a', '```'].join('\n'));
   });
 });

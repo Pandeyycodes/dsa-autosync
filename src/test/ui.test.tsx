@@ -209,7 +209,7 @@ describe('Settings controls', () => {
     await user.click(screen.getByRole('radio', { name: 'Flat' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '10', branch: 'main', rootFolder: 'solutions', layout: 'platform/problem' });
-    expect(screen.getByText(/solutions\/LeetCode\/0001-two-sum\/Python\/solution\.py/)).toBeInTheDocument();
+    expect(screen.getByText(/solutions\/LeetCode\/0001-two-sum\/solution\.py/)).toBeInTheDocument();
   });
 
   it('disconnects GitHub', async () => {

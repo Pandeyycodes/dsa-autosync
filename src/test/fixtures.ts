@@ -10,6 +10,7 @@ export const LC_QUESTION_HTML = `<p>Given an array of integers <code>nums</code>
 <strong>Output:</strong> [0,1]
 </pre>
 <p><strong class="example">Example 2:</strong></p>
+<img alt="" src="https://assets.leetcode.com/uploads/example2.png" style="width: 300px;" />
 <div class="example-block">
 <p><strong>Input:</strong> <span class="example-io">nums = [3,2,4], target = 6</span></p>
 <p><strong>Output:</strong> <span class="example-io">[1,2]</span></p>

@@ -192,7 +192,7 @@ describe('problem HTML extraction', () => {
     expect(c.statementMarkdown).toContain('Given an array of integers `nums`');
     expect(c.statementMarkdown).toContain('Follow-up');
     expect(c.statementMarkdown).not.toContain('Example 1');
-    expect(c.examples).toEqual(['Input: nums = [2,7,11,15], target = 9\nOutput: [0,1]', 'Input: nums = [3,2,4], target = 6\nOutput: [1,2]']);
+    expect(c.examples).toEqual(['Input: nums = [2,7,11,15], target = 9\nOutput: [0,1]', '![diagram](https://assets.leetcode.com/uploads/example2.png)\nInput: nums = [3,2,4], target = 6\nOutput: [1,2]']);
     expect(c.constraints).toEqual(['`2 <= nums.length <= 10^4`', '**Only one valid answer exists.**']);
   });
 

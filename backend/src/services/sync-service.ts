@@ -1,6 +1,6 @@
 import { LANGUAGES, type LanguageId } from '../../../src/shared/languages';
 import { generateReadme, type ReadmeSolution } from '../../../src/shared/readme';
-import { buildSolutionPaths } from '../../../src/shared/repo-paths';
+import { buildSolutionPaths, languageOfSolutionFile } from '../../../src/shared/repo-paths';
 import type { RepoConfig, SyncRequest, SyncResponse } from '../../../src/shared/schemas';
 import { GitHubError, type ContentEntry, type GitHubClient } from '../github/client';
 import { gitBlobSha, sha256Hex } from '../lib/crypto';
@@ -85,11 +85,18 @@ export class SyncService {
     }
 
     const listing = await this.github.getContent(token, repo, paths.problemDir, cfg.branch);
+    // README lists every language already in this problem folder (multi-language preserved).
     const solutions: ReadmeSolution[] = [];
+    const seen = new Set<LanguageId>([capture.language]);
     const langByFolder = new Map(Object.values(LANGUAGES).map((l) => [l.folder, l.id as LanguageId]));
-    for (const entry of Array.isArray(listing) ? (listing as ContentEntry[]) : []) {
-      const lang = entry.type === 'dir' ? langByFolder.get(entry.name) : undefined;
-      if (lang && lang !== capture.language) solutions.push({ language: lang, relativePath: `${entry.name}/` });
+    const entries = (Array.isArray(listing) ? (listing as ContentEntry[]) : []).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      // solution.<ext> files; also older <Language>/ folders from previous layouts.
+      const lang = entry.type === 'file' ? languageOfSolutionFile(entry.name) : entry.type === 'dir' ? langByFolder.get(entry.name) : undefined;
+      if (lang && !seen.has(lang)) {
+        seen.add(lang);
+        solutions.push({ language: lang, relativePath: entry.type === 'dir' ? `${entry.name}/` : entry.name });
+      }
     }
     solutions.push({ language: capture.language, relativePath: paths.solutionFile.slice(paths.problemDir.length + 1) });
     const readme = generateReadme(capture, req.readme, solutions);

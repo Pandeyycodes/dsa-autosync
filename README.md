@@ -58,17 +58,17 @@ DSA/                                   ← root folder (configurable, may be emp
   LeetCode/
     Array/                             ← topic folder (or flat layout: no topic level)
       0001-two-sum/
-        Python/solution.py
-        Cpp/solution.cpp               ← multiple languages are preserved side by side
+        solution.py
+        solution.cpp                   ← each language is its own file, side by side
         README.md
     Database/
       0176-second-highest-salary/
-        SQL/solution.sql               ← SQL is a language → .sql
+        solution.sql                   ← SQL is a language → .sql
         README.md
   GeeksForGeeks/
     Linked-List/
       reverse-a-linked-list/
-        Java/solution.java
+        solution.java
         README.md
 ```
 

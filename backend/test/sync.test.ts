@@ -42,8 +42,8 @@ describe('GitHub synchronization', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().outcome).toBe('created');
     const files = c.gh.files('octocat/dsa');
-    expect([...files.keys()].sort()).toEqual(['DSA/LeetCode/Array/0001-two-sum/Python/solution.py', 'DSA/LeetCode/Array/0001-two-sum/README.md']);
-    expect(files.get('DSA/LeetCode/Array/0001-two-sum/Python/solution.py')!.content).toBe(syncRequest().capture.code);
+    expect([...files.keys()].sort()).toEqual(['DSA/LeetCode/Array/0001-two-sum/README.md', 'DSA/LeetCode/Array/0001-two-sum/solution.py']);
+    expect(files.get('DSA/LeetCode/Array/0001-two-sum/solution.py')!.content).toBe(syncRequest().capture.code);
     expect(files.get('DSA/LeetCode/Array/0001-two-sum/README.md')!.content).toContain('# 1. Two Sum');
     expect(c.gh.calls.filter((x) => x.url.endsWith('/git/commits') && x.method === 'POST')).toHaveLength(1);
   });
@@ -69,8 +69,8 @@ describe('GitHub synchronization', () => {
     const changed = (id: string, strategy: 'skip' | 'overwrite' | 'version') => post(c, '/v1/sync', syncRequest({ submissionId: id, code: `# v${id}\n` }, { duplicateStrategy: strategy }));
     expect((await changed('2', 'skip')).json().outcome).toBe('skipped_exists');
     expect((await changed('3', 'overwrite')).json().outcome).toBe('updated');
-    expect(c.gh.files('octocat/dsa').get('DSA/LeetCode/Array/0001-two-sum/Python/solution.py')!.content).toBe('# v3\n');
-    expect((await changed('4', 'version')).json().paths[0]).toBe('DSA/LeetCode/Array/0001-two-sum/Python/solution-4.py');
+    expect(c.gh.files('octocat/dsa').get('DSA/LeetCode/Array/0001-two-sum/solution.py')!.content).toBe('# v3\n');
+    expect((await changed('4', 'version')).json().paths[0]).toBe('DSA/LeetCode/Array/0001-two-sum/solution-4.py');
   });
 
   it('preserves multiple languages and lists them in the README', async () => {
@@ -78,11 +78,11 @@ describe('GitHub synchronization', () => {
     await post(c, '/v1/sync', syncRequest());
     await post(c, '/v1/sync', syncRequest({ submissionId: '77', language: 'cpp', languageVariant: 'C++', code: 'class Solution {};\n' }));
     const files = c.gh.files('octocat/dsa');
-    expect(files.has('DSA/LeetCode/Array/0001-two-sum/Python/solution.py')).toBe(true);
-    expect(files.has('DSA/LeetCode/Array/0001-two-sum/Cpp/solution.cpp')).toBe(true);
+    expect(files.has('DSA/LeetCode/Array/0001-two-sum/solution.py')).toBe(true);
+    expect(files.has('DSA/LeetCode/Array/0001-two-sum/solution.cpp')).toBe(true);
     const readme = files.get('DSA/LeetCode/Array/0001-two-sum/README.md')!.content;
-    expect(readme).toContain('[Python](Python/)');
-    expect(readme).toContain('[C++](Cpp/solution.cpp)');
+    expect(readme).toContain('[Python](solution.py)');
+    expect(readme).toContain('[C++](solution.cpp)');
   });
 
   it('stores SQL solutions as .sql under the Database topic', async () => {
@@ -92,7 +92,7 @@ describe('GitHub synchronization', () => {
       problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
     });
     expect((await post(c, '/v1/sync', req)).statusCode).toBe(200);
-    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Database/0176-second-highest-salary/SQL/solution.sql')).toBe(true);
+    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Database/0176-second-highest-salary/solution.sql')).toBe(true);
   });
 
   it('accepts the default branch of an empty repository, but not other branches', async () => {
@@ -105,7 +105,7 @@ describe('GitHub synchronization', () => {
     const c = await ready({ empty: true });
     const res = await post(c, '/v1/sync', syncRequest({}, { repo: { ...REPO, rootFolder: '', layout: 'platform/problem' } }));
     expect(res.json().outcome).toBe('created');
-    expect(c.gh.files('octocat/dsa').has('LeetCode/0001-two-sum/Python/solution.py')).toBe(true);
+    expect(c.gh.files('octocat/dsa').has('LeetCode/0001-two-sum/solution.py')).toBe(true);
   });
 
   it('returns 429 with retry-after on GitHub rate limiting, then succeeds on retry', async () => {
