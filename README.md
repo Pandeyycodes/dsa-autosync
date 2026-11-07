@@ -1,107 +1,156 @@
-# CodeSync
+<div align="center">
 
-CodeSync is a Chrome extension (Manifest V3) with a small, **stateless** backend (no database). It commits your **accepted** LeetCode and GeeksforGeeks solutions to a GitHub repository you choose, each with a generated README.
+# DSA AutoSync
 
-- **Accepted only.** It uploads only after the platform's own API confirms the verdict for that exact submission ID.
-- **Exact code.** It uploads the code the platform stored for that submission, never what is currently in the editor. If that code can't be retrieved, the upload is skipped and the problem is reported.
-- **Secure GitHub App sign-in.** The backend keeps the app secret and seals your GitHub token with AES-256-GCM. The extension stores only that sealed blob and can't read the token inside it.
-- **Deterministic READMEs.** No AI is involved. Problem text is included only if you opt in.
-- **Separate dimensions.** Platform (LeetCode / GeeksforGeeks), language (C … SQL) and topic (Arrays, Trees, Database …) are tracked separately.
+**Solve a problem. It's on GitHub.**
 
-> **Other docs:** [DEPLOYMENT.md](DEPLOYMENT.md) (local setup, GitHub App, hosting, Chrome Web Store) · [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md)
+A Chrome extension that automatically commits your **accepted** LeetCode and GeeksforGeeks solutions to your GitHub repository, with a clean README for every problem.
 
-## Architecture
+</div>
+
+---
+
+## What it does
+
+You submit a solution on **LeetCode** or **GeeksforGeeks**. If it's **Accepted**, DSA AutoSync:
+
+1. confirms the verdict with the platform itself (not just the green banner on screen);
+2. fetches the **exact code you submitted**;
+3. commits it to your repository, in the right folder, with a README.
+
+Wrong answers, compile errors and time-outs are ignored. Nothing is uploaded unless it's accepted.
+
+## What you get on GitHub
 
 ```
- LeetCode / GfG tab                          Chrome extension                         Backend (Fastify, stateless)               GitHub
-┌──────────────────────┐  postMessage  ┌─────────────────────────┐   HTTPS + Bearer   ┌───────────────────────────────┐  user-to-server
-│ MAIN-world hook      │──(id only)──▶ │ isolated content script │                    │ /v1/auth/*  GitHub App OAuth  │  token (server
-│ observes submit/     │               │ verifies verdict + gets │── runtime msg ──▶  │ /v1/repos   repo + branch     │  side only)
-│ result responses     │               │ exact code by sub. id   │                    │ /v1/sync    idempotent commit │ ─────────────▶ Git Data API
-└──────────────────────┘               │                         │  service worker:   │ sealed sessions (AES-GCM),      │                (1 commit per
-                                       │ popup / dashboard (React)│  persistent job   │ rate limits, Zod                │                 solution+README)
-                                       └─────────────────────────┘  queue + retries   └───────────────────────────────┘
+DSA/
+├── LeetCode/
+│   ├── Array/
+│   │   └── 0001-two-sum/
+│   │       ├── README.md        ← problem, link, examples, diagrams
+│   │       ├── solution.py
+│   │       └── solution.cpp     ← solved it in another language? it sits next to it
+│   └── Tree/
+│       └── 0104-maximum-depth-of-binary-tree/
+└── GeeksForGeeks/
+    └── Linked-List/
+        └── reverse-a-linked-list/
 ```
 
-| Layer | Path | Responsibility |
-|---|---|---|
-| Shared domain | `src/shared/` | Languages, verdict normalisation, Zod schemas, safe repo paths, README generator. The backend imports these too. |
-| Content scripts | `src/content/` | `leetcode/` and `gfg/` adapters, each with a MAIN-world network observer plus an isolated verifier. `problem-html.ts` extracts the statement, examples and constraints. |
-| Service worker | `src/background/` | Message router (sender and payload validation), auth manager (PKCE handoff), persistent job queue (retries, backoff, restart recovery). |
-| UI | `src/popup/`, `src/dashboard/`, `src/ui/` | Popup, dashboard (Overview, Activity, Repository, Platforms & languages, General). |
-| Backend | `backend/` | Stateless Fastify API: sealed-session auth, repository validation, GitHub sync. No database. |
+**SQL gets its own repository** (optional), grouped by difficulty:
 
-## Quick start (local)
+```
+sql-solutions/
+└── LeetCode/
+    ├── Easy/0175-combine-two-tables/solution.sql
+    ├── Medium/0176-second-highest-salary/solution.sql
+    └── Hard/0185-department-top-three-salaries/solution.sql
+```
+
+Each problem's **README** contains:
+- the title, difficulty, topics and a link to the problem;
+- the full statement, examples (with diagrams) and constraints, if you turn them on;
+- links to every language you've solved it in.
+
+## Features
+
+| | |
+|---|---|
+| ✅ **Accepted only** | The verdict is checked through the platform's own data for that exact submission |
+| 📄 **Exact code** | Fetches the submitted code, never what's left in the editor |
+| 🗂️ **Organised folders** | Platform → topic → problem. SQL goes by difficulty. A flat layout is available |
+| 🧾 **Auto README** | Statement, examples, diagrams and constraints, copied as-is, nothing invented |
+| 🗄️ **Separate SQL repo** | Optionally send SQL solutions to their own repository |
+| 🔁 **No duplicates** | The same code is never committed twice. Changed code updates the file (configurable) |
+| 🔒 **Secure GitHub access** | GitHub App with access only to the repositories you pick. Your token is encrypted |
+| ♻️ **Reliable** | Retries if GitHub or your network is down. Nothing is lost if the browser restarts |
+
+**Languages:** C, C++, Python, Java, JavaScript, TypeScript, Go, Rust, C#, Kotlin, PHP, Ruby, Swift and SQL (MySQL, PostgreSQL, MS SQL, Oracle).
+
+## How to use it
+
+1. **Install** the extension. During development: load `dist/` at `chrome://extensions`.
+2. Click the icon → **Connect GitHub** → approve.
+3. **Install the app** on the repository you want to use. The dashboard links to it.
+4. In **Dashboard → Repository**, pick the repository and click **Save**. Optionally, also pick a separate SQL repository.
+5. Solve problems. Watch them appear under **Activity** and on GitHub.
+
+Optional: **Dashboard → General → README content** adds the full problem statement, examples and constraints.
+
+> The problem text belongs to LeetCode and GeeksforGeeks. It's off by default, and a private repository is recommended if you turn it on.
+
+## Run it yourself
+
+You need **Node.js 20+** and **Chrome**.
 
 ```bash
 npm install
-cd backend && npm install && cd ..
+cd backend && npm install && cp .env.example .env    # then fill in your GitHub App keys
+npm run dev                                          # backend at http://localhost:8787
 ```
 
-Then follow [DEPLOYMENT.md → Local development](DEPLOYMENT.md#a-local-development). It covers the GitHub App, `.env`, running the backend, and loading the extension.
+In a second terminal, from the project folder:
 
-### Commands
-
-| Command | What it does |
-|---|---|
-| `npm run build` | Extension: typecheck → Vite build → content-script IIFE bundles → `dist/` verification (manifest refs, no remote/inline code, secret scan) |
-| `npm test` | Extension tests (UI, navigation, settings, adapters, job queue, messaging) |
-| `npm run typecheck` | Extension TypeScript (strict) |
-| `cd backend && npm run dev` | Backend with live reload |
-| `cd backend && npm test` | Backend tests (auth, GitHub sync, security, README/paths) |
-| `cd backend && npm run build && npm start` | Production backend bundle |
-
-## Repository layout produced
-
-```
-DSA/                                   ← root folder (configurable, may be empty)
-  LeetCode/
-    Array/                             ← topic folder (or flat layout: no topic level)
-      0001-two-sum/
-        solution.py
-        solution.cpp                   ← each language is its own file, side by side
-        README.md
-    Database/
-      0176-second-highest-salary/
-        solution.sql                   ← SQL is a language → .sql
-        README.md
-  GeeksForGeeks/
-    Linked-List/
-      reverse-a-linked-list/
-        solution.java
-        README.md
+```bash
+npm run build                                        # extension → dist/
 ```
 
-Every path segment is sanitised to `[A-Za-z0-9._-]`. Traversal (`..`), dot-folders (`.github`) and reserved names are rejected. The backend builds every path itself and ignores any path a client sends.
+Then load `dist/` at `chrome://extensions` with Developer mode on.
 
-## Duplicate protection
+The full walkthrough — creating the GitHub App, hosting the backend, publishing to the Chrome Web Store — is in **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
-1. **Per submission.** The extension's persistent queue never re-sends a finished submission, and the server suppresses rapid repeats of the same (user, platform, submission id).
-2. **Per content.** The backend compares the git blob SHA of the new code with the existing file. Identical code returns `unchanged`.
-3. **Changed code** follows your setting: *Update when changed* (default), *Never overwrite*, or *Keep every version* (`solution-<id>.ext`).
+## How it works
+
+```
+ LeetCode / GfG page          Chrome extension                 Backend (no database)         GitHub
+┌────────────────────┐      ┌──────────────────────┐        ┌──────────────────────┐      ┌──────────┐
+│ you click Submit   │ ───▶ │ checks the verdict,  │ ─────▶ │ builds the folder    │ ───▶ │ 1 commit │
+│                    │      │ gets the exact code  │        │ path + README        │      │ per      │
+└────────────────────┘      └──────────────────────┘        └──────────────────────┘      │ solution │
+                                                                                          └──────────┘
+```
+
+- **The extension** watches problem pages, verifies accepted submissions and queues uploads.
+- **The backend** holds the GitHub App secret and commits to GitHub on your behalf. It stores nothing: your GitHub access is sealed (encrypted) inside your session.
+
+## Privacy & security
+
+- No passwords are ever entered into or stored by DSA AutoSync.
+- LeetCode and GfG use your existing browser login; nothing is shared from them except the accepted solution.
+- GitHub access is limited to the repositories you choose. Revoke it any time from the dashboard or GitHub settings.
+- No database, no tracking, no analytics.
+
+Details: **[PRIVACY.md](PRIVACY.md)** · **[SECURITY.md](SECURITY.md)**
 
 ## Project structure
 
 ```
-backend/                stateless Fastify API (src/) and tests
-public/manifest.json    MV3 manifest (storage, identity, alarms, notifications)
-src/shared/             cross-boundary domain logic + Zod schemas
-src/content/            platform adapters (LeetCode, GeeksforGeeks)
-src/background/         service worker: router, auth, job queue, API client
-src/ui/, src/popup/, src/dashboard/   React UI
-scripts/                content-script builder, dist verifier, icon generator
+src/
+  content/      reads LeetCode and GeeksforGeeks submissions
+  background/   upload queue, retries, GitHub sign-in
+  dashboard/    dashboard pages
+  popup/        toolbar popup
+  shared/       folder paths, README generator, validation
+backend/        small API that talks to GitHub
 ```
 
-## Test status
+## Development
 
-See the implementation report in the final message of the build session, or run the suites yourself. All suites use mocked platform/GitHub fixtures. The LeetCode adapter's public `question` GraphQL query and the `submissionDetails` field names were checked against leetcode.com. **Authenticated end-to-end runs against LeetCode, GeeksforGeeks and a real GitHub App need your accounts and credentials.** See DEPLOYMENT.md § Testing both platforms.
+| Command | What it does |
+|---|---|
+| `npm run build` | Build the extension into `dist/` (with safety checks) |
+| `npm test` | Extension tests |
+| `cd backend && npm run dev` | Run the backend with auto-reload |
+| `cd backend && npm test` | Backend tests |
 
 ## Known limitations
 
-- **GeeksforGeeks publishes no API.** The adapter relies on endpoints and fields found in GfG's production web client: `submit/compile`, `submission/submit/result` (`status`, `view_mode`) and `problems/submissions/{id}` (`user_code`, `language`). If GfG changes them, verdicts become `UNKNOWN` and nothing is uploaded; it fails closed. It has not been run against a logged-in GfG account.
-- **GfG verification only happens in the tab you submitted from.** There is no known verdict-by-ID endpoint, so if that tab closes before the verdict arrives, the job expires as `UNKNOWN`. LeetCode jobs resume on the next LeetCode page load.
-- **LeetCode endpoints are undocumented.** `/check/` and GraphQL can change without notice. The adapter validates every response and fails closed.
-- **Premium problems.** For paid-only LeetCode problems you can't access, no statement is included. Nothing is invented.
-- **No database, by design (personal use).** There is no server-side session revocation list (Disconnect revokes the GitHub grant instead), and history is per browser. For a public multi-user launch, add Postgres; see DEPLOYMENT.md.
-- **Rate limiting and duplicate suppression are in memory**, so they reset on restart. GitHub content-hash checks still prevent duplicate commits.
-"# dsa-autosync" 
+- **GeeksforGeeks** has no public API. The adapter follows how GfG's own website works, so if GfG changes it, syncing pauses safely: it uploads nothing rather than the wrong thing.
+- **LeetCode premium** problems you don't have access to are synced without the statement.
+- Built for **personal use**: no database, so history lives in your browser.
+
+---
+
+<div align="center">
+Built with React, TypeScript, Vite, Tailwind CSS and Fastify.
+</div>

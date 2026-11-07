@@ -222,3 +222,34 @@ describe('upload queue reliability', () => {
     expect(j.verdict).toBe('UNKNOWN');
   });
 });
+
+describe('separate SQL repository', () => {
+  const sqlRepo = { repositoryId: '20', fullName: 'octocat/sql-solutions', branch: 'main', rootFolder: '', layout: 'platform/topic/problem' as const };
+
+  it('routes SQL solutions to the SQL repository and everything else to the main one', async () => {
+    const h = harness();
+    await h.kv.set(KEYS.account, account({ sqlRepo }));
+    await h.svc.report('leetcode', '1', 'ACCEPTED', capture({ submissionId: '1', language: 'sql', languageVariant: 'MySQL' }));
+    await h.svc.report('leetcode', '2', 'ACCEPTED', capture({ submissionId: '2' }));
+    await h.svc.processQueue();
+    const byId = Object.fromEntries(h.calls.map((c) => [c.capture.submissionId, c.repo.repositoryId]));
+    expect(byId).toEqual({ '1': '20', '2': '10' });
+  });
+
+  it('falls back to the main repository when no SQL repository is set', async () => {
+    const h = harness();
+    await h.svc.report('leetcode', '1', 'ACCEPTED', capture({ submissionId: '1', language: 'sql', languageVariant: 'MySQL' }));
+    await h.svc.processQueue();
+    expect(h.calls[0]!.repo.repositoryId).toBe('10');
+  });
+
+  it('uploads SQL even if only the SQL repository is configured; others wait', async () => {
+    const h = harness();
+    await h.kv.set(KEYS.account, account({ repo: null, sqlRepo }));
+    await h.svc.report('leetcode', '1', 'ACCEPTED', capture({ submissionId: '1', language: 'sql', languageVariant: 'MySQL' }));
+    await h.svc.report('leetcode', '2', 'ACCEPTED', capture({ submissionId: '2' }));
+    await h.svc.processQueue();
+    expect(h.calls.map((c) => c.capture.submissionId)).toEqual(['1']);
+    expect((await job(h.kv, 'leetcode:2')).error?.code).toBe('REPO_NOT_CONFIGURED');
+  });
+});

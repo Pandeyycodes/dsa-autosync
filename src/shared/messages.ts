@@ -23,6 +23,9 @@ export const ContentMessageSchema = z.discriminatedUnion('type', [
 ]);
 export type ContentMessage = z.infer<typeof ContentMessageSchema>;
 
+export const RepoTargetKindSchema = z.enum(['main', 'sql']);
+export type RepoTargetKind = z.infer<typeof RepoTargetKindSchema>;
+
 /** Messages from extension pages (popup / dashboard). */
 export const UiMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ui/connect') }),
@@ -37,8 +40,11 @@ export const UiMessageSchema = z.discriminatedUnion('type', [
     branch: z.string().min(1).max(200),
     rootFolder: z.string().max(200),
     layout: FolderLayoutSchema,
+    /** 'sql' saves the optional SQL-only destination; default is the main repository. */
+    target: RepoTargetKindSchema.optional(),
   }),
-  z.object({ type: z.literal('ui/test-repo') }),
+  z.object({ type: z.literal('ui/test-repo'), target: RepoTargetKindSchema.optional() }),
+  z.object({ type: z.literal('ui/clear-sql-repo') }),
   z.object({ type: z.literal('ui/retry'), key: z.string().max(100) }),
   z.object({ type: z.literal('ui/sync-held') }),
   z.object({ type: z.literal('ui/ping') }),

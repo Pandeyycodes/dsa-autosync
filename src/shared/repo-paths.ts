@@ -65,11 +65,25 @@ export interface PathInput {
   title: string;
   topics: string[];
   language: LanguageId;
+  difficulty?: string | null;
 }
 
 export function primaryTopic(topics: string[], language: LanguageId): string {
   if (language === 'sql' && !topics.length) return 'Database';
   return topics[0] ?? 'Uncategorized';
+}
+
+/**
+ * Grouping folder inside a platform. Platforms tag nearly every SQL problem
+ * just "Database", so SQL is grouped by difficulty (Easy / Medium / Hard);
+ * everything else by its primary topic (Array, Tree, Graph …).
+ */
+export function groupFolder(input: Pick<PathInput, 'topics' | 'language' | 'difficulty'>): string {
+  if (input.language === 'sql') {
+    const d = input.difficulty?.trim();
+    return d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : 'Uncategorized';
+  }
+  return primaryTopic(input.topics, input.language);
 }
 
 export function problemFolderName(input: Pick<PathInput, 'platform' | 'problemId' | 'slug' | 'title'>): string {
@@ -95,7 +109,7 @@ export function buildSolutionPaths(rootFolder: string, layout: FolderLayout, inp
   const root = normalizeRootFolder(rootFolder);
   const lang = LANGUAGES[input.language];
   const segments = [root, PLATFORM_FOLDERS[input.platform]];
-  if (layout === 'platform/topic/problem') segments.push(safeSegment(primaryTopic(input.topics, input.language), 'topic'));
+  if (layout === 'platform/topic/problem') segments.push(safeSegment(groupFolder(input), 'group'));
   segments.push(problemFolderName(input));
   const problemDir = segments.filter(Boolean).join('/');
   const safeName = safeSegment(fileName, 'solution');

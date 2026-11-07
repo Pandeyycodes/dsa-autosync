@@ -1,7 +1,7 @@
 /** Extension-side domain types (popup, dashboard, service worker, content scripts). */
 import type { LanguageId } from './languages';
 import type { FolderLayout } from './repo-paths';
-import type { MeResponse, SyncOutcome, SyncRequest } from './schemas';
+import type { MeResponse, RepoConfig, SyncOutcome, SyncRequest } from './schemas';
 import type { Verdict } from './verdict';
 
 export type PlatformId = 'leetcode' | 'gfg';
@@ -28,8 +28,11 @@ export interface Settings {
   repository: { rootFolder: string; layout: FolderLayout };
 }
 
-/** Signed-in account as cached by the service worker (never contains GitHub tokens). */
-export type Account = MeResponse;
+/**
+ * Signed-in account as cached by the service worker (never contains GitHub tokens).
+ * `repo` is the main destination; `sqlRepo` optionally receives SQL solutions.
+ */
+export type Account = MeResponse & { sqlRepo?: RepoConfig | null };
 
 export type JobStatus =
   | 'verifying' // waiting for the platform's final verdict

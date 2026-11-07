@@ -61,7 +61,8 @@ export class AuthManager {
       const me = await this.d.api.me();
       // Repository choice lives only in the extension (the backend is stateless).
       const prev = await this.d.kv.get<Account>(KEYS.account);
-      const account: Account = { ...me, repo: prev?.user.githubId === me.user.githubId ? prev.repo : null };
+      const same = prev?.user.githubId === me.user.githubId;
+      const account: Account = { ...me, repo: same ? prev.repo : null, sqlRepo: same ? (prev.sqlRepo ?? null) : null };
       await this.d.kv.set<Account>(KEYS.account, account);
       return account;
     } catch (e) {

@@ -54,8 +54,12 @@ describe('README generation', () => {
     const capture = { ...syncRequest().capture, language: 'sql' as const, languageVariant: 'MySQL', problem: { ...syncRequest().capture.problem, topics: [] } };
     const md = generateReadme(capture, all, [{ language: 'sql', relativePath: 'solution.sql' }]);
     expect(md).toContain('| **Language** | SQL |');
-    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: [], language: 'sql' }).solutionFile)
-      .toBe('LeetCode/Database/0176-second-highest-salary/solution.sql');
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'x', topics: ['Database'], language: 'sql', difficulty: 'Medium' }).solutionFile)
+      .toBe('LeetCode/Medium/0176-second-highest-salary/solution.sql');
+    // SQL is grouped by difficulty, never by the generic "Database" tag; unknown difficulty -> Uncategorized
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'gfg', problemId: null, slug: 'q', title: 'q', topics: ['SQL'], language: 'sql', difficulty: null }).solutionFile).toBe('GeeksForGeeks/Uncategorized/q/solution.sql');
+    // non-SQL keeps topic folders
+    expect(buildSolutionPaths('', 'platform/topic/problem', { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'x', topics: ['Array'], language: 'python', difficulty: 'Easy' }).solutionFile).toBe('LeetCode/Array/0001-two-sum/solution.py');
   });
 
   it('lists multiple languages', () => {

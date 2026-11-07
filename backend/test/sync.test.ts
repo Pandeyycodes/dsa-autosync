@@ -85,14 +85,14 @@ describe('GitHub synchronization', () => {
     expect(readme).toContain('[C++](solution.cpp)');
   });
 
-  it('stores SQL solutions as .sql under the Database topic', async () => {
+  it('stores SQL solutions as .sql grouped by difficulty', async () => {
     const c = await ready();
     const req = syncRequest({
       submissionId: '55', language: 'sql', languageVariant: 'MySQL', code: 'SELECT MAX(salary) AS SecondHighestSalary FROM Employee;\n',
       problem: { id: '176', title: 'Second Highest Salary', slug: 'second-highest-salary', url: 'https://leetcode.com/problems/second-highest-salary/', difficulty: 'Medium', topics: ['Database'], statementMarkdown: null, examples: [], constraints: [] },
     });
     expect((await post(c, '/v1/sync', req)).statusCode).toBe(200);
-    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Database/0176-second-highest-salary/solution.sql')).toBe(true);
+    expect(c.gh.files('octocat/dsa').has('DSA/LeetCode/Medium/0176-second-highest-salary/solution.sql')).toBe(true);
   });
 
   it('accepts the default branch of an empty repository, but not other branches', async () => {

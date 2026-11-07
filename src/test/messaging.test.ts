@@ -108,3 +108,17 @@ describe('stateless session renewal', () => {
     expect(saved).toEqual([]);
   });
 });
+
+describe('SQL repository messages', () => {
+  it('stores the SQL destination separately and clears it', async () => {
+    const fetchImpl: typeof fetch = async () => Response.json({ repositoryId: '20', fullName: 'octocat/sql-solutions', branch: 'main', rootFolder: '', layout: 'platform/topic/problem' });
+    const { d, kv } = deps(fetchImpl);
+    const res = await handleMessage({ type: 'ui/save-repo', repositoryId: '20', branch: 'main', rootFolder: '', layout: 'platform/topic/problem', target: 'sql' }, ui, d);
+    expect(res.ok).toBe(true);
+    const acct = (await kv.get<{ repo: { fullName: string }; sqlRepo: { fullName: string } }>(KEYS.account))!;
+    expect(acct.sqlRepo.fullName).toBe('octocat/sql-solutions');
+    expect(acct.repo.fullName).toBe('octocat/dsa'); // main untouched
+    await handleMessage({ type: 'ui/clear-sql-repo' }, ui, d);
+    expect((await kv.get<{ sqlRepo: unknown }>(KEYS.account))!.sqlRepo).toBeNull();
+  });
+});

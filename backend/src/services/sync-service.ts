@@ -61,6 +61,7 @@ export class SyncService {
       title: capture.problem.title,
       topics: capture.problem.topics,
       language: capture.language,
+      difficulty: capture.problem.difficulty,
     };
     let paths = buildSolutionPaths(cfg.rootFolder, cfg.layout, pathInput);
 

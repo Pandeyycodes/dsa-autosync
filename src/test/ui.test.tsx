@@ -243,3 +243,28 @@ describe('Repository page with an empty repository', () => {
     expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '10', branch: 'main', rootFolder: 'DSA', layout: 'platform/topic/problem' });
   });
 });
+
+describe('SQL repository settings', () => {
+  it('saves a separate SQL repository and can turn it off again', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/repository';
+    const { sent, kv } = setup(<Dashboard />, { [KEYS.account]: account() }, (m) => {
+      if (m.type === 'ui/repos') return { ok: true, data: { installUrl: 'https://x', repositories: [{ id: '10', fullName: 'octocat/dsa', private: true, defaultBranch: 'main', canPush: true }, { id: '20', fullName: 'octocat/sql-solutions', private: true, defaultBranch: 'main', canPush: true }] } };
+      if (m.type === 'ui/branches') return { ok: true, data: { branches: ['main'] } };
+      if (m.type === 'ui/save-repo') return { ok: true, data: { repositoryId: m.repositoryId, fullName: 'octocat/sql-solutions', branch: m.branch, rootFolder: m.rootFolder, layout: m.layout } };
+      return { ok: true, data: null };
+    });
+    await user.click(await screen.findByRole('switch', { name: 'Separate repository for SQL' }));
+    const select = await screen.findByRole('combobox', { name: 'SQL repository' });
+    await waitFor(() => expect(within(select).getByRole('option', { name: 'octocat/sql-solutions' })).toBeInTheDocument());
+    await user.selectOptions(select, '20');
+    await waitFor(() => expect(screen.getByLabelText('SQL branch')).toHaveValue('main'));
+    expect(screen.getByText('LeetCode/Medium/0176-second-highest-salary/solution.sql')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save SQL repository' }));
+    expect(sent).toContainEqual({ type: 'ui/save-repo', repositoryId: '20', branch: 'main', rootFolder: '', layout: 'platform/topic/problem', target: 'sql' });
+
+    await kv.set(KEYS.account, account({ sqlRepo: { repositoryId: '20', fullName: 'octocat/sql-solutions', branch: 'main', rootFolder: '', layout: 'platform/topic/problem' } }));
+    await user.click(screen.getByRole('switch', { name: 'Separate repository for SQL' }));
+    expect(sent).toContainEqual({ type: 'ui/clear-sql-repo' });
+  });
+});

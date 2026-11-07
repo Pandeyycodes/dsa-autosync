@@ -86,12 +86,18 @@ export async function handleMessage(raw: unknown, sender: Sender, d: RouterDeps)
       case 'ui/save-repo': {
         const repo = await d.api.validateRepo({ repositoryId: m.repositoryId, branch: m.branch, rootFolder: m.rootFolder, layout: m.layout });
         const account = await d.kv.get<Account>(KEYS.account);
-        if (account) await d.kv.set<Account>(KEYS.account, { ...account, repo });
+        if (account) await d.kv.set<Account>(KEYS.account, m.target === 'sql' ? { ...account, sqlRepo: repo } : { ...account, repo });
         void d.jobs.processQueue();
         return { ok: true, data: repo };
       }
+      case 'ui/clear-sql-repo': {
+        const account = await d.kv.get<Account>(KEYS.account);
+        if (account) await d.kv.set<Account>(KEYS.account, { ...account, sqlRepo: null });
+        return { ok: true, data: null };
+      }
       case 'ui/test-repo': {
-        const repo = (await d.kv.get<Account>(KEYS.account))?.repo;
+        const account = await d.kv.get<Account>(KEYS.account);
+        const repo = m.target === 'sql' ? account?.sqlRepo : account?.repo;
         if (!repo) return fail('REPO_NOT_CONFIGURED', 'Choose and save a repository first.');
         return { ok: true, data: await d.api.testRepo(repo) };
       }

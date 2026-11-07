@@ -4,7 +4,7 @@
  * content scripts resume pending verifications.
  */
 import { KEYS, MAX_JOBS, RETRY, VERIFY_TIMEOUT_MS } from '@/shared/constants';
-import { CaptureSchema, type SubmissionCapture, type SyncRequest } from '@/shared/schemas';
+import { CaptureSchema, type RepoConfig, type SubmissionCapture, type SyncRequest } from '@/shared/schemas';
 import { loadSettings, type KV } from '@/shared/storage';
 import type { Account, Job, PlatformId } from '@/shared/types';
 import { actionFor, type Verdict } from '@/shared/verdict';
@@ -19,6 +19,12 @@ export interface JobDeps {
 }
 
 export const jobKey = (platform: PlatformId, submissionId: string) => `${platform}:${submissionId}`;
+
+/** SQL solutions go to the SQL repository when one is configured; everything else to the main repository. */
+export function destinationFor(account: Account, job: Pick<Job, 'request'>): RepoConfig | null {
+  if (job.request?.capture.language === 'sql' && account.sqlRepo) return account.sqlRepo;
+  return account.repo;
+}
 
 async function webSha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -215,25 +221,33 @@ export class JobService {
       const account = await this.account();
       const next = await this.mutate((jobs) => {
         const t = this.now();
-        const due = Object.values(jobs)
+        const ready = Object.values(jobs)
           .filter((j) => j.status === 'queued' && j.request && (j.nextAttemptAt ?? Infinity) <= t)
-          .sort((a, b) => a.detectedAt - b.detectedAt)[0];
-        if (!due) return null;
-        if (!account || !account.githubAuthorized || !account.repo) {
+          .sort((a, b) => a.detectedAt - b.detectedAt);
+        if (!ready.length) return null;
+        if (!account || !account.githubAuthorized) {
           for (const j of Object.values(jobs)) {
             if (j.status === 'queued') {
-              j.nextAttemptAt = null; // wait until connected/configured; connect() re-triggers
-              j.error = !account || !account.githubAuthorized
-                ? { code: 'NOT_CONNECTED', message: 'Waiting for GitHub to be connected.' }
-                : { code: 'REPO_NOT_CONFIGURED', message: 'Waiting for a repository to be selected.' };
+              j.nextAttemptAt = null; // wait until connected; connect() re-triggers
+              j.error = { code: 'NOT_CONNECTED', message: 'Waiting for GitHub to be connected.' };
             }
           }
           return null;
         }
+        // Each job goes to its destination: SQL → SQL repository (if set), otherwise the main one.
+        let due: Job | undefined;
+        for (const j of ready) {
+          if (destinationFor(account, j)) {
+            due = j;
+            break;
+          }
+          j.nextAttemptAt = null; // waits until a repository is saved
+          j.error = { code: 'REPO_NOT_CONFIGURED', message: 'Waiting for a repository to be selected.' };
+        }
+        if (!due) return null;
         due.status = 'uploading';
         due.updatedAt = t;
-        // Upload to the repository currently selected in the extension.
-        return { key: due.key, request: { ...due.request!, repo: account.repo } satisfies SyncRequest };
+        return { key: due.key, request: { ...due.request!, repo: destinationFor(account, due)! } satisfies SyncRequest };
       });
       if (!next) return;
 

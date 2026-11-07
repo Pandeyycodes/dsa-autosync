@@ -1,10 +1,12 @@
-import { ExternalLink, Folder, Github, Loader2, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Database, ExternalLink, Folder, Github, Loader2, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { buildSolutionPaths, normalizeRootFolder, type FolderLayout } from '@/shared/repo-paths';
+import type { RepoTargetKind } from '@/shared/messages';
+import { buildSolutionPaths, normalizeRootFolder, type FolderLayout, type PathInput } from '@/shared/repo-paths';
 import type { RepoConfig, RepositorySummary } from '@/shared/schemas';
 import { StatusDot } from '@/ui/components/Badges';
 import { Button } from '@/ui/components/Button';
 import { SettingRow, SettingsCard, TextInput } from '@/ui/components/Fields';
+import { Switch } from '@/ui/components/Switch';
 import { useAction } from '@/ui/hooks/useAction';
 import { useSettings } from '@/ui/hooks/useSettings';
 import { cn } from '@/ui/lib/utils';
@@ -21,34 +23,37 @@ function folderError(v: string): string | null {
   }
 }
 
-export function RepositoryPage() {
+/** Preview problems used to show where a file will land. */
+const SAMPLE: Record<RepoTargetKind, PathInput> = {
+  main: { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'Two Sum', topics: ['Array'], language: 'python', difficulty: 'Easy' },
+  sql: { platform: 'leetcode', problemId: '176', slug: 'second-highest-salary', title: 'Second Highest Salary', topics: ['Database'], language: 'sql', difficulty: 'Medium' },
+};
+
+interface EditorProps {
+  kind: RepoTargetKind;
+  saved: RepoConfig | null;
+  repos: RepositorySummary[] | null;
+  installUrl: string | null;
+  onReload: () => void;
+}
+
+/** Repository + branch + folder editor. Used for the main destination and the optional SQL one. */
+function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorProps) {
   const { account, settings, update } = useSettings();
   const { run, pending } = useAction();
   const connected = !!account?.githubAuthorized;
+  const sql = kind === 'sql';
+  const p = sql ? 'SQL ' : '';
+  const id = (s: string) => (sql ? `sql-${s}` : s);
 
-  const [repos, setRepos] = useState<RepositorySummary[] | null>(null);
-  const [installUrl, setInstallUrl] = useState<string | null>(null);
-  const [repoId, setRepoId] = useState(account?.repo?.repositoryId ?? '');
+  const [repoId, setRepoId] = useState(saved?.repositoryId ?? '');
   const [branches, setBranches] = useState<string[]>([]);
-  const [branch, setBranch] = useState(account?.repo?.branch ?? '');
+  const [branch, setBranch] = useState(saved?.branch ?? '');
   const [emptyRepo, setEmptyRepo] = useState(false);
-  const [folder, setFolder] = useState(account?.repo?.rootFolder ?? settings.repository.rootFolder);
-  const [layout, setLayout] = useState<FolderLayout>(account?.repo?.layout ?? settings.repository.layout);
+  const [folder, setFolder] = useState(saved?.rootFolder ?? (sql ? '' : settings.repository.rootFolder));
+  const [layout, setLayout] = useState<FolderLayout>(saved?.layout ?? settings.repository.layout);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const fErr = folderError(folder);
-
-  const loadRepos = async () => {
-    const data = await run<{ repositories: RepositorySummary[]; installUrl: string }>({ type: 'ui/repos' });
-    if (data) {
-      setRepos(data.repositories);
-      setInstallUrl(data.installUrl);
-    }
-  };
-
-  useEffect(() => {
-    if (connected) void loadRepos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected]);
 
   useEffect(() => {
     if (!repoId || !connected) return setBranches([]);
@@ -65,12 +70,15 @@ export function RepositoryPage() {
   }, [repoId, connected, repos]);
 
   const save = async () => {
-    const saved = await run<RepoConfig>({ type: 'ui/save-repo', repositoryId: repoId, branch, rootFolder: folder, layout }, { success: 'Repository settings saved' });
-    if (saved) update((s) => ({ ...s, repository: { rootFolder: saved.rootFolder, layout: saved.layout } }));
+    const result = await run<RepoConfig>(
+      { type: 'ui/save-repo', repositoryId: repoId, branch, rootFolder: folder, layout, ...(sql && { target: 'sql' as const }) },
+      { success: sql ? 'SQL repository saved' : 'Repository settings saved' },
+    );
+    if (result && !sql) update((s) => ({ ...s, repository: { rootFolder: result.rootFolder, layout: result.layout } }));
   };
 
   const dirty =
-    !account?.repo || account.repo.repositoryId !== repoId || account.repo.branch !== branch || account.repo.rootFolder !== folder.trim().replace(/^\/+|\/+$/g, '') || account.repo.layout !== layout;
+    !saved || saved.repositoryId !== repoId || saved.branch !== branch || saved.rootFolder !== folder.trim().replace(/^\/+|\/+$/g, '') || saved.layout !== layout;
   const saveBlocker = !connected
     ? 'Connect GitHub first.'
     : !repoId
@@ -82,11 +90,112 @@ export function RepositoryPage() {
           : !dirty
             ? 'Saved.'
             : null;
-  const preview = fErr ? null : buildSolutionPaths(folder, layout, { platform: 'leetcode', problemId: '1', slug: 'two-sum', title: 'Two Sum', topics: ['Array'], language: 'python' });
+  const preview = fErr ? null : buildSolutionPaths(folder, layout, sql ? SAMPLE.sql : SAMPLE.main);
+  const testAction = sql ? 'ui/test-repo' : 'ui/test-repo';
+
+  return (
+    <>
+      <SettingRow title={`${p}Repository`.replace('SQL Repository', 'SQL repository')} description={connected ? 'Only repositories where the CodeSync app is installed are listed.' : 'Available after connecting GitHub.'} htmlFor={id('repo')}>
+        <div className="flex items-center gap-1.5">
+          <select id={id('repo')} className={selectCls} value={repoId} disabled={!connected || !repos} onChange={(e) => setRepoId(e.target.value)}>
+            <option value="">{repos ? (repos.length ? 'Select a repository…' : 'No repositories available') : connected ? 'Loading…' : 'Connect GitHub first'}</option>
+            {repos?.map((r) => (
+              <option key={r.id} value={r.id} disabled={!r.canPush}>
+                {r.fullName}{r.canPush ? '' : ' (read-only)'}
+              </option>
+            ))}
+          </select>
+          <button type="button" aria-label={`Reload ${p.toLowerCase()}repositories`} disabled={!connected} onClick={onReload} className="focus-ring rounded p-1.5 text-fg-subtle hover:text-fg disabled:opacity-40">
+            <RefreshCw size={13} className={cn(pending === 'ui/repos' && 'animate-spin')} />
+          </button>
+        </div>
+      </SettingRow>
+      {installUrl && (
+        <div className="px-5 py-2.5 text-xs text-fg-subtle">
+          Missing a repository?{' '}
+          <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-fg-muted underline-offset-2 hover:text-fg hover:underline">
+            Install CodeSync on it <ExternalLink size={11} />
+          </a>
+        </div>
+      )}
+      <SettingRow title={sql ? 'SQL branch' : 'Branch'} description="Commits are pushed to this branch." htmlFor={id('branch')}>
+        <select id={id('branch')} className={selectCls} value={branch} disabled={!branches.length} onChange={(e) => setBranch(e.target.value)}>
+          {!branches.length && <option value="">{repoId ? 'Loading…' : '—'}</option>}
+          {branches.map((b) => <option key={b} value={b}>{b}{emptyRepo ? ' (new — created on first sync)' : ''}</option>)}
+        </select>
+      </SettingRow>
+      {emptyRepo && (
+        <p className="px-5 py-2.5 text-xs text-fg-subtle">This repository is empty. CodeSync will create the first commit on <span className="font-mono">{branch}</span>.</p>
+      )}
+      <SettingRow title={sql ? 'SQL root folder' : 'Root folder'} description="Leave empty to write at the repository root." htmlFor={id('root-folder')}>
+        <div className="w-64">
+          <TextInput id={id('root-folder')} value={folder} placeholder="/" prefix={<Folder size={13} />} error={fErr} onChange={(e) => setFolder(e.target.value)} />
+        </div>
+      </SettingRow>
+      <SettingRow
+        title={sql ? 'SQL folder structure' : 'Folder structure'}
+        description={sql ? 'Group SQL problems by difficulty (Easy / Medium / Hard), or keep a flat list.' : 'Group problems by topic (SQL by difficulty), or keep a flat list per platform.'}
+      >
+        <div role="radiogroup" aria-label={sql ? 'SQL folder structure' : 'Folder structure'} className="flex rounded-md border border-line bg-canvas p-0.5">
+          {([['platform/topic/problem', sql ? 'By difficulty' : 'By topic'], ['platform/problem', 'Flat']] as const).map(([value, label]) => (
+            <button key={value} type="button" role="radio" aria-checked={layout === value} onClick={() => setLayout(value)}
+              className={cn('focus-ring h-6 rounded-[5px] px-2.5 text-xs font-medium transition-colors', layout === value ? 'bg-surface-active text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </SettingRow>
+      {testResult && <p role="status" className={cn('px-5 py-3 text-sm', testResult.ok ? 'text-accent' : 'text-danger')}>{testResult.message}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-raised/40 px-5 py-3">
+        <p className="flex min-w-0 items-center gap-2 truncate font-mono text-xs text-fg-subtle">
+          <span className="text-fg-faint">preview</span>
+          {preview?.solutionFile ?? '—'}
+        </p>
+        <div className="flex items-center gap-2">
+          {saveBlocker && <span className="text-xs text-fg-subtle" data-testid={id('save-hint')}>{saveBlocker}</span>}
+          <Button size="sm" variant="ghost" aria-label={sql ? 'Test SQL write access' : 'Test write access'}
+            icon={pending === testAction ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />} disabled={!saved || dirty || !!pending}
+            onClick={async () => setTestResult(await run<{ ok: boolean; message: string }>({ type: 'ui/test-repo', ...(sql && { target: 'sql' as const }) }))}>
+            Test write access
+          </Button>
+          <Button size="sm" variant="primary" aria-label={sql ? 'Save SQL repository' : 'Save'} disabled={!!saveBlocker || pending === 'ui/save-repo'} onClick={save}>
+            {pending === 'ui/save-repo' ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function RepositoryPage() {
+  const { account } = useSettings();
+  const { run, pending } = useAction();
+  const connected = !!account?.githubAuthorized;
+  const [repos, setRepos] = useState<RepositorySummary[] | null>(null);
+  const [installUrl, setInstallUrl] = useState<string | null>(null);
+  const [sqlOn, setSqlOn] = useState(!!account?.sqlRepo);
+
+  const loadRepos = async () => {
+    const data = await run<{ repositories: RepositorySummary[]; installUrl: string }>({ type: 'ui/repos' });
+    if (data) {
+      setRepos(data.repositories);
+      setInstallUrl(data.installUrl);
+    }
+  };
+
+  useEffect(() => {
+    if (connected) void loadRepos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected]);
+
+  const toggleSql = async (on: boolean) => {
+    setSqlOn(on);
+    if (!on && account?.sqlRepo) await run({ type: 'ui/clear-sql-repo' }, { success: 'SQL solutions will go to the main repository' });
+  };
 
   return (
     <div className="space-y-4">
-      <SettingsCard title="GitHub account" description="CodeSync uses a GitHub App with access only to repositories you install it on. Your GitHub token stays on the CodeSync server, encrypted.">
+      <SettingsCard title="GitHub account" description="CodeSync uses a GitHub App with access only to repositories you install it on. Your GitHub token is sealed by the CodeSync server; the extension can't read it.">
         <div className="flex items-center justify-between gap-4 px-5 py-4">
           <div className="flex items-center gap-3">
             {account?.user.avatarUrl ? (
@@ -116,78 +225,19 @@ export function RepositoryPage() {
         </div>
       </SettingsCard>
 
-      <SettingsCard
-        title="Destination"
-        description="Where accepted solutions are committed."
-        footer={
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="flex min-w-0 items-center gap-2 truncate font-mono text-xs text-fg-subtle">
-              <span className="text-fg-faint">preview</span>
-              {preview?.solutionFile ?? '—'}
-            </p>
-            <div className="flex items-center gap-2">
-              {saveBlocker && <span className="text-xs text-fg-subtle" data-testid="save-hint">{saveBlocker}</span>}
-              <Button size="sm" variant="ghost" icon={pending === 'ui/test-repo' ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />} disabled={!account?.repo || dirty || !!pending}
-                onClick={async () => setTestResult(await run<{ ok: boolean; message: string }>({ type: 'ui/test-repo' }))}>
-                Test write access
-              </Button>
-              <Button size="sm" variant="primary" disabled={!!saveBlocker || pending === 'ui/save-repo'} onClick={save}>
-                {pending === 'ui/save-repo' ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        }
-      >
-        <SettingRow title="Repository" description={connected ? 'Only repositories where the CodeSync app is installed are listed.' : 'Available after connecting GitHub.'} htmlFor="repo">
-          <div className="flex items-center gap-1.5">
-            <select id="repo" className={selectCls} value={repoId} disabled={!connected || !repos} onChange={(e) => setRepoId(e.target.value)}>
-              <option value="">{repos ? (repos.length ? 'Select a repository…' : 'No repositories available') : connected ? 'Loading…' : 'Connect GitHub first'}</option>
-              {repos?.map((r) => (
-                <option key={r.id} value={r.id} disabled={!r.canPush}>
-                  {r.fullName}{r.canPush ? '' : ' (read-only)'}
-                </option>
-              ))}
-            </select>
-            <button type="button" aria-label="Reload repositories" disabled={!connected} onClick={loadRepos} className="focus-ring rounded p-1.5 text-fg-subtle hover:text-fg disabled:opacity-40">
-              <RefreshCw size={13} className={cn(pending === 'ui/repos' && 'animate-spin')} />
-            </button>
-          </div>
+      <SettingsCard title="Destination" description="Where accepted solutions are committed.">
+        <DestinationEditor kind="main" saved={account?.repo ?? null} repos={repos} installUrl={installUrl} onReload={loadRepos} />
+      </SettingsCard>
+
+      <SettingsCard title="SQL repository" description="Optional. Send SQL solutions to their own repository, grouped by difficulty. When off, SQL goes to the main repository.">
+        <SettingRow
+          title="Separate repository for SQL"
+          description={sqlOn ? 'SQL solutions (MySQL, PostgreSQL, MS SQL, Oracle) go to the repository below.' : 'SQL solutions currently go to the main repository.'}
+          icon={<span className="flex h-7 w-7 items-center justify-center rounded-md border border-line-strong bg-surface-raised text-fg-muted"><Database size={13} /></span>}
+        >
+          <Switch label="Separate repository for SQL" checked={sqlOn} disabled={!connected} onChange={toggleSql} />
         </SettingRow>
-        {installUrl && (
-          <div className="px-5 py-2.5 text-xs text-fg-subtle">
-            Missing a repository?{' '}
-            <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-fg-muted underline-offset-2 hover:text-fg hover:underline">
-              Install CodeSync on it <ExternalLink size={11} />
-            </a>
-          </div>
-        )}
-        <SettingRow title="Branch" description="Commits are pushed to this branch." htmlFor="branch">
-          <select id="branch" className={selectCls} value={branch} disabled={!branches.length} onChange={(e) => setBranch(e.target.value)}>
-            {!branches.length && <option value="">{repoId ? 'Loading…' : '—'}</option>}
-            {branches.map((b) => <option key={b} value={b}>{b}{emptyRepo ? ' (new — created on first sync)' : ''}</option>)}
-          </select>
-        </SettingRow>
-        {emptyRepo && (
-          <p className="px-5 py-2.5 text-xs text-fg-subtle">This repository is empty. CodeSync will create the first commit on <span className="font-mono">{branch}</span>.</p>
-        )}
-        <SettingRow title="Root folder" description="Leave empty to write at the repository root." htmlFor="root-folder">
-          <div className="w-64">
-            <TextInput id="root-folder" value={folder} placeholder="/" prefix={<Folder size={13} />} error={fErr} onChange={(e) => setFolder(e.target.value)} />
-          </div>
-        </SettingRow>
-        <SettingRow title="Folder structure" description="Group problems by topic, or keep a flat list per platform.">
-          <div role="radiogroup" aria-label="Folder structure" className="flex rounded-md border border-line bg-canvas p-0.5">
-            {([['platform/topic/problem', 'By topic'], ['platform/problem', 'Flat']] as const).map(([id, label]) => (
-              <button key={id} type="button" role="radio" aria-checked={layout === id} onClick={() => setLayout(id)}
-                className={cn('focus-ring h-6 rounded-[5px] px-2.5 text-xs font-medium transition-colors', layout === id ? 'bg-surface-active text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </SettingRow>
-        {testResult && (
-          <p role="status" className={cn('px-5 py-3 text-sm', testResult.ok ? 'text-accent' : 'text-danger')}>{testResult.message}</p>
-        )}
+        {sqlOn && <DestinationEditor kind="sql" saved={account?.sqlRepo ?? null} repos={repos} installUrl={null} onReload={loadRepos} />}
       </SettingsCard>
     </div>
   );
