@@ -20,9 +20,14 @@ export interface JobDeps {
 
 export const jobKey = (platform: PlatformId, submissionId: string) => `${platform}:${submissionId}`;
 
-/** SQL solutions go to the SQL repository when one is configured; everything else to the main repository. */
+/**
+ * SQL solutions go to the SQL repository when one is configured; everything
+ * else to the main repository. The SQL repository holds only LeetCode SQL, so
+ * it never gets a LeetCode/ folder: sections always sit at its root,
+ * whatever layout an older version saved.
+ */
 export function destinationFor(account: Account, job: Pick<Job, 'request'>): RepoConfig | null {
-  if (job.request?.capture.language === 'sql' && account.sqlRepo) return account.sqlRepo;
+  if (job.request?.capture.language === 'sql' && account.sqlRepo) return { ...account.sqlRepo, layout: 'topic/problem' };
   return account.repo;
 }
 

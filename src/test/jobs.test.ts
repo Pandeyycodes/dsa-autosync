@@ -236,6 +236,14 @@ describe('separate SQL repository', () => {
     expect(byId).toEqual({ '1': '20', '2': '10' });
   });
 
+  it('never uses a LeetCode/ folder in the SQL repository, whatever layout was saved', async () => {
+    const h = harness();
+    await h.kv.set(KEYS.account, account({ sqlRepo })); // old saved layout: platform/topic/problem
+    await h.svc.report('leetcode', '1', 'ACCEPTED', capture({ submissionId: '1', language: 'sql', languageVariant: 'MySQL' }));
+    await h.svc.processQueue();
+    expect(h.calls[0]!.repo.layout).toBe('topic/problem');
+  });
+
   it('falls back to the main repository when no SQL repository is set', async () => {
     const h = harness();
     await h.svc.report('leetcode', '1', 'ACCEPTED', capture({ submissionId: '1', language: 'sql', languageVariant: 'MySQL' }));

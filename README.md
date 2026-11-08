@@ -53,9 +53,9 @@ sql-solutions/                                    ← sections sit right at the 
 └── 07-Advanced-String-Functions-Regex-Clause/    (7)
 ```
 
-An SQL-only repository holds just LeetCode, so there's no `LeetCode/` folder ("Sections at root"). Prefer one? Choose **Inside LeetCode/** in the SQL folder structure setting.
+An SQL-only repository holds just LeetCode, so it never gets a `LeetCode/` folder: sections always sit at its root.
 
-**SQL problems outside SQL 50** go to a folder named after the main SQL concept your solution uses, because LeetCode tags every SQL problem only "Database". The concept is picked by fixed rules (no AI), most advanced first: Data-Modification, Window-Functions, CTE, Subqueries, Joins, Set-Operations, Aggregation, Date-Functions, String-Functions, Conditional-Logic, Basic-Select. Such a problem stays in the folder it first landed in, even if you solve it again a different way. Prefer Easy / Medium / Hard folders instead? Choose **By difficulty**.
+**SQL problems outside SQL 50** go to a folder named after the main SQL concept your solution uses, because LeetCode tags every SQL problem only "Database". The concept is picked by fixed rules (no AI), most advanced first: Data-Modification, Window-Functions, CTE, Subqueries, Joins, Set-Operations, Aggregation, Date-Functions, String-Functions, Conditional-Logic, Basic-Select. Such a problem stays in the folder it first landed in, even if you solve it again a different way. 
 
 Each problem's **README** contains:
 - the title, difficulty, topics and a link to the problem;

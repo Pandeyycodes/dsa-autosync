@@ -52,7 +52,7 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
   const [emptyRepo, setEmptyRepo] = useState(false);
   const [folder, setFolder] = useState(saved?.rootFolder ?? (sql ? '' : settings.repository.rootFolder));
   // An SQL-only repository holds one platform, so sections sit at its root by default (no LeetCode/ folder).
-  const [layout, setLayout] = useState<FolderLayout>(saved?.layout ?? (sql ? 'topic/problem' : settings.repository.layout));
+  const [layout, setLayout] = useState<FolderLayout>(sql ? 'topic/problem' : (saved?.layout ?? settings.repository.layout));
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const fErr = folderError(folder);
 
@@ -79,7 +79,7 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
   };
 
   const dirty =
-    !saved || saved.repositoryId !== repoId || saved.branch !== branch || saved.rootFolder !== folder.trim().replace(/^\/+|\/+$/g, '') || saved.layout !== layout;
+    !saved || saved.repositoryId !== repoId || saved.branch !== branch || saved.rootFolder !== folder.trim().replace(/^\/+|\/+$/g, '') || (!sql && saved.layout !== layout);
   const saveBlocker = !connected
     ? 'Connect GitHub first.'
     : !repoId
@@ -133,19 +133,17 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
           <TextInput id={id('root-folder')} value={folder} placeholder="/" prefix={<Folder size={13} />} error={fErr} onChange={(e) => setFolder(e.target.value)} />
         </div>
       </SettingRow>
+      {sql ? (
+        <SettingRow title="SQL folder structure" description="SQL 50 sections (01-Select …) sit right at the repository root, no LeetCode/ folder. Other SQL problems go by the concept used (Joins, Aggregation …).">
+          <span className="text-xs text-fg-subtle">Sections at root</span>
+        </SettingRow>
+      ) : (
       <SettingRow
-        title={sql ? 'SQL folder structure' : 'Folder structure'}
-        description={
-          sql
-            ? 'Sections at root: SQL 50 sections (01-Select …) straight in the repository, no LeetCode/ folder. Other SQL problems go by the concept used (Joins, Aggregation …).'
-            : 'By topic (Array, Tree …; SQL by concept used), by difficulty, or a flat list per platform.'
-        }
+        title="Folder structure"
+        description="By topic (Array, Tree …; SQL by concept used), by difficulty, or a flat list per platform."
       >
-        <div role="radiogroup" aria-label={sql ? 'SQL folder structure' : 'Folder structure'} className="flex rounded-md border border-line bg-canvas p-0.5">
-          {(sql
-            ? ([['topic/problem', 'Sections at root'], ['platform/topic/problem', 'Inside LeetCode/'], ['platform/difficulty/problem', 'By difficulty']] as const)
-            : ([['platform/topic/problem', 'By topic'], ['platform/difficulty/problem', 'By difficulty'], ['platform/problem', 'Flat']] as const)
-          ).map(([value, label]) => (
+        <div role="radiogroup" aria-label="Folder structure" className="flex rounded-md border border-line bg-canvas p-0.5">
+          {([['platform/topic/problem', 'By topic'], ['platform/difficulty/problem', 'By difficulty'], ['platform/problem', 'Flat']] as const).map(([value, label]) => (
             <button key={value} type="button" role="radio" aria-checked={layout === value} onClick={() => setLayout(value)}
               className={cn('focus-ring h-6 rounded-[5px] px-2.5 text-xs font-medium transition-colors', layout === value ? 'bg-surface-active text-fg' : 'text-fg-subtle hover:text-fg-muted')}>
               {label}
@@ -153,6 +151,7 @@ function DestinationEditor({ kind, saved, repos, installUrl, onReload }: EditorP
           ))}
         </div>
       </SettingRow>
+      )}
       {testResult && <p role="status" className={cn('px-5 py-3 text-sm', testResult.ok ? 'text-accent' : 'text-danger')}>{testResult.message}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-raised/40 px-5 py-3">
         <p className="flex min-w-0 items-center gap-2 truncate font-mono text-xs text-fg-subtle">
